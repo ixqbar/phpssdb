@@ -135,7 +135,12 @@ $ssdb_handle->connect("127.0.0.1", 8888);
 *option_name*   
 * SSDB::OPT_PREFIX
 * SSDB::OPT_READ_TIMEOUT 
-* SSDB::OPT_SERIALIZER
+* SSDB::OPT_SERIALIZER   
+
+提供
+SSDB::SERIALIZER_NONE 
+SSDB::SERIALIZER_PHP 
+SSDB::SERIALIZER_IGBINARY(需要编译开启)三种模式，默认无
 
 *option_value* 
 #####return#####
@@ -143,7 +148,8 @@ $ssdb_handle->connect("127.0.0.1", 8888);
 ```
 $ssdb_handle->option(SSDB::OPT_READ_TIMEOUT, 15); //设置读取超时时间，单位秒
 $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_'); //设置key前缀
-$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);//设置value压缩模式 使用压缩会导致类似substr命令返回出错
+//设置value压缩模式 使用压缩会导致类似substr命令返回出错
+$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 ```
 #auth
 #####params####
@@ -175,6 +181,10 @@ key存在返回对应value,否则返回NULL
 $ssdb_handle->get('name'); //xingqiba
 $ssdb_handle->get('blog'); //http://xingqiba.sinaapp.com/ or NULL
 ```
+#待更新...
+
+#TODO
+* session
 
 #contact
 更多疑问请+qq群 233415606 or [website http://xingqiba.sinaapp.com](http://xingqiba.sinaapp.com)
