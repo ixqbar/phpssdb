@@ -262,7 +262,7 @@ PHP_METHOD(SSDB, set) {
 			&expire) == FAILURE
 			|| 0 == key_len
 			|| 0 == Z_STRLEN_P(z_value)
-			|| expire <= 0) {
+			|| expire < 0) {
 		RETURN_NULL();
 	}
 
