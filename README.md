@@ -1,4 +1,4 @@
-#@TODO
+#文档待完善更新
 
 #目录
 
@@ -38,8 +38,63 @@
 	* [hincr](#hincr)
 	* [hexists](#hexists)
 	* [hsize](#hsize)
+	* [hlist](#hlist)
+	* [hrlist](#hrlist)
+	* [hkeys](#hkeys)
+	* [hsize](#hsize)
+	* [hgetall](#hgetall)
+	* [hscan](#hscan)
+	* [hrscan](#hrscan)
+	* [hclear](#hclear)
+	* [multi_hset](#multi_hset)
+	* [multi_hget](#multi_hget)
+	* [multi_hdel](#multi_hdel)
+4. [set]
+   * [zset](#zset)
+   * [zget](#zget)
+   * [zdel](#zdel)
+   * [zincr](#zincr)
+   * [zexists](#zexists)
+   * [zsize](#zsize)
+   * [zlist](#zlist)
+   * [zrlist](#zrlist)
+   * [zkeys](#zkeys)
+   * [zscan](#zscan)
+   * [zrscan](#rzset)
+   * [zrank](#zrank)
+   * [zrrank](#zrrank)
+   * [zrange](#zrange)
+   * [zrrange](#zrrange)
+   * [zclear](#zclear)
+   * [zcount](#zcount)
+   * [zsum](#zsum)
+   * [zavg](#zavg)
+   * [zremrangebyrank](#zremrangebyrank)
+   * [zremrangebyscore](#zremrangebyscore)
+   * [multi_zset](#multi_zset)
+	* [multi_zget](#multi_zget)
+	* [multi_zdel](#multi_zdel)
+5. [list]  
+	* [qsize](#qsize)
+	* [qlist](#qlist)
+	* [qrlist](#qrlist)
+	* [qclear](#qclear)
+	* [qfront](#qfront)
+	* [qback](#qback)
+	* [qget](#qget)
+	* [qset](#qset)
+	* [qrange](#qrange)
+	* [qslice](#qslice)
+	* [qpush](#qpush)
+	* [qpush_front](#qpush_front)
+	* [qpush_back](#qpush_back)
+	* [qpop](#qpop)
+	* [qpop_front](#qpop_front)
+	* [qpop_back](#qpop_back)
+	* [qtrim_front](#qtrim_front)
+	* [qtrim_back](#qtrim_back)
 	
------
+	-----
 
 #install
 ```

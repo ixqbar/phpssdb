@@ -90,6 +90,7 @@ SSDBSock* ssdb_create_sock(
 		char *persistent_id,
         long retry_interval,
 		zend_bool lazy_connect);
+
 void ssdb_free_socket(SSDBSock *ssdb_sock);
 void ssdb_stream_close(SSDBSock *ssdb_sock);
 
@@ -99,7 +100,13 @@ int ssdb_disconnect_socket(SSDBSock *ssdb_sock);
 
 int ssdb_key_prefix(SSDBSock *ssdb_sock, char **key, int *key_len);
 int ssdb_cmd_format_by_str(SSDBSock *ssdb_sock, char **ret, char *params, ...);
-int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret, char *cmd, int cmd_len, zval *params, int read_all);
+int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret,
+		char *cmd, int cmd_len,
+		char *key, int key_len,
+		zval *params,
+		int read_all,
+		int fill_prefix,
+		int serialize);
 
 int ssdb_check_eof(SSDBSock *ssdb_sock);
 

@@ -255,7 +255,14 @@ int ssdb_cmd_format_by_str(SSDBSock *ssdb_sock, char **ret, char *params, ...) {
 	return buf.len;
 }
 
-int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret, char *cmd, int cmd_len, zval *params, int read_all) {
+int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock,
+		char **ret,
+		char *cmd, int cmd_len,
+		char *key, int key_len,
+		zval *params,
+		int read_all,
+		int fill_prefix,
+		int serialize) {
 	HashTable *hash = Z_ARRVAL_P(params);
 	int element = zend_hash_num_elements(hash);
 	if (0 == element) {
@@ -267,6 +274,13 @@ int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret, char *cmd, int cmd_
 	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
 	smart_str_appendl(&buf, cmd, cmd_len);
 	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+
+	if (key_len > 0) {
+		smart_str_append_long(&buf, key_len);
+		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+		smart_str_appendl(&buf, key, key_len);
+		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+	}
 
 	for (zend_hash_internal_pointer_reset(hash); zend_hash_has_more_elements(hash) == SUCCESS; zend_hash_move_forward(hash)) {
 		zval **z_value_pp;
@@ -286,8 +300,17 @@ int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret, char *cmd, int cmd_
 				key_len--;
 			}
 
-			key_free = ssdb_key_prefix(ssdb_sock, &key, (int*)&key_len);
-			val_free = ssdb_serialize(ssdb_sock, *z_value_pp, &val, &val_len);
+			if (fill_prefix) {
+				key_free = ssdb_key_prefix(ssdb_sock, &key, (int*)&key_len);
+			}
+
+			if (serialize) {
+				val_free = ssdb_serialize(ssdb_sock, *z_value_pp, &val, &val_len);
+			} else {
+				convert_to_string(*z_value_pp);
+				val = Z_STRVAL_PP(z_value_pp);
+				val_len = Z_STRLEN_PP(z_value_pp);
+			}
 
 			smart_str_append_long(&buf, (long)key_len);
 			smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
@@ -305,7 +328,9 @@ int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret, char *cmd, int cmd_
 				continue;
 			}
 
-			key_free = ssdb_key_prefix(ssdb_sock, &key, (int*)&key_len);
+			if (fill_prefix) {
+				key_free = ssdb_key_prefix(ssdb_sock, &key, (int*)&key_len);
+			}
 
 			smart_str_append_long(&buf, (long)key_len);
 			smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
@@ -511,7 +536,7 @@ SSDBResponse *ssdb_sock_read(SSDBSock *ssdb_sock) {
     		} else {
     			memcpy(to_read_buf + to_read_buf_total, buf, actual_read_num);
     			to_read_buf_total += actual_read_num;
-    			SSDB_DEBUG_LOG("read sock all data %s on step first\n", to_read_len_buf);
+    			SSDB_DEBUG_LOG("read sock all data %s on step first\n", to_read_buf);
     		}
     	} else {
     		actual_read_num = php_stream_read(ssdb_sock->stream, to_read_buf + to_read_buf_total, expect_read_num);
@@ -533,7 +558,7 @@ SSDBResponse *ssdb_sock_read(SSDBSock *ssdb_sock) {
 
 			to_read_buf[to_read_buf_total - 1] = '\0';
 
-			SSDB_DEBUG_LOG("read sock all data %s on step second\n", to_read_len_buf);
+			SSDB_DEBUG_LOG("read sock all data %s on step second\n", to_read_buf);
 
 			if (ssdb_response->status == SSDB_IS_DEFAULT) {
 				if (0 == strcmp(to_read_buf, "ok")) {
@@ -625,38 +650,32 @@ int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, int *val_len) {
 	switch(ssdb_sock->serializer) {
 		case SSDB_SERIALIZER_NONE:
 			switch(Z_TYPE_P(z)) {
-
 				case IS_STRING:
 					*val = Z_STRVAL_P(z);
 					*val_len = Z_STRLEN_P(z);
 					return 0;
-
 				case IS_OBJECT:
 					MAKE_STD_ZVAL(z_copy);
 					ZVAL_STRINGL(z_copy, "Object", 6, 1);
 					break;
-
 				case IS_ARRAY:
 					MAKE_STD_ZVAL(z_copy);
 					ZVAL_STRINGL(z_copy, "Array", 5, 1);
 					break;
-
 				default: /* copy */
 					MAKE_STD_ZVAL(z_copy);
 					*z_copy = *z;
 					zval_copy_ctor(z_copy);
 					break;
 			}
-
 			/* return string */
 			convert_to_string(z_copy);
 			*val = Z_STRVAL_P(z_copy);
 			*val_len = Z_STRLEN_P(z_copy);
 			efree(z_copy);
 			return 1;
-
+			break;
 		case SSDB_SERIALIZER_PHP:
-
 #if ZEND_MODULE_API_NO >= 20100000
 			PHP_VAR_SERIALIZE_INIT(ht);
 #else
@@ -670,9 +689,8 @@ int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, int *val_len) {
 #else
 			zend_hash_destroy(&ht);
 #endif
-
 			return 1;
-
+			break;
 		case SSDB_SERIALIZER_IGBINARY:
 #ifdef HAVE_SSDB_IGBINARY
 			if(igbinary_serialize(&val8, (size_t *)&sz, z TSRMLS_CC) == 0) { /* ok */
@@ -682,6 +700,7 @@ int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, int *val_len) {
 			}
 #endif
 			return 0;
+			break;
 	}
 
 	return 0;
@@ -742,7 +761,9 @@ void ssdb_bool_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock) {
 		RETURN_FALSE;
 	}
 
-	if (0 != strcmp(ssdb_response->block->data, "1")) {
+	//qset只返回2\nok\n\n
+	if (ssdb_response->num > 0
+			&& 0 != strcmp(ssdb_response->block->data, "1")) {
 		RETVAL_FALSE;
 	} else {
 		RETVAL_TRUE;
