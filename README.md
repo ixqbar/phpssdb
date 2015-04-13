@@ -10,8 +10,8 @@
    * [option](#option)
    * [auth](#auth)
 2. [string]
-   * [set](#set)
-   * [set](#setx)
+   * [set/setx](#set)
+   * [get](#get)
    * [setnx](#setnx)
    * [expire](#expire)
    * [ttl](#ttl)
@@ -111,9 +111,10 @@ $ssdb_handle->connect('127.0.0.1', 8888);
 $ssdb_handle->set('ssdb_version', '1.8.0');
 $ssdb_handle->get('ssdb_version');
 ```
+* 本扩展支持的所有命令如果返回为NULL，代表可能的错误为命令参数错误、连接中断、服务器返回失败、客户端发送失败等
 
-#connect(host, port[,timeout,persistent_id,retry_interval])
-##params##
+#connect
+#####params#####
 *host* string 主机
 
 *port* int 端口
@@ -123,17 +124,57 @@ $ssdb_handle->get('ssdb_version');
 *persistent_id* 用于长连接
 
 *retry_interval*  重连间隔 单位毫秒
-##return##
+#####return#####
 成功true 失败false
 ```
 $ssdb_handle->connect("127.0.0.1", 8888);
 ```
 
-#option(option_name, option_value)
-##return##
+#option
+#####params#####
+*option_name*   
+* SSDB::OPT_PREFIX
+* SSDB::OPT_READ_TIMEOUT 
+* SSDB::OPT_SERIALIZER
+
+*option_value* 
+#####return#####
 成功true,失败false
 ```
 $ssdb_handle->option(SSDB::OPT_READ_TIMEOUT, 15); //设置读取超时时间，单位秒
 $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_'); //设置key前缀
 $ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);//设置value压缩模式 使用压缩会导致类似substr命令返回出错
 ```
+#auth
+#####params####
+*password*
+#####return####
+成功true,失败false
+```
+$ssdb_handle->auth('your_auth_password');
+```
+#set
+#####params#####
+*key*
+
+*key_value*
+
+*expire*  选填参数 过期时间（单位秒） 填充时等价于setx
+#####return#####
+成功true,失败false
+```
+$ssdb_handle->set('name', 'xingqiba');
+$ssdb_handle->set('blog', 'http://xingqiba.sinaapp.com/', 3600);
+```
+#get
+#####params#####
+*key*
+#####return#####
+key存在返回对应value,否则返回NULL
+```
+$ssdb_handle->get('name'); //xingqiba
+$ssdb_handle->get('blog'); //http://xingqiba.sinaapp.com/ or NULL
+```
+
+#contact
+更多疑问请+qq群 233415606 or [website http://xingqiba.sinaapp.com](http://xingqiba.sinaapp.com)

@@ -250,17 +250,19 @@ PHP_METHOD(SSDB, auth) {
 PHP_METHOD(SSDB, set) {
 	zval *object;
 	SSDBSock *ssdb_sock;
-	char *key = NULL, *value = NULL, *expire = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, expire_len = 0, cmd_len = 0;
+	char *key = NULL, *value = NULL, *cmd = NULL;
+	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
+	long expire = 0;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz|s",
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz|l",
 			&object, ssdb_ce,
 			&key, &key_len,
 			&z_value,
-			&expire, &expire_len) == FAILURE
+			&expire) == FAILURE
 			|| 0 == key_len
-			|| 0 == Z_STRLEN_P(z_value)) {
+			|| 0 == Z_STRLEN_P(z_value)
+			|| expire <= 0) {
 		RETURN_NULL();
 	}
 
@@ -271,10 +273,13 @@ PHP_METHOD(SSDB, set) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 
-	if (0 == expire_len) {
+	if (0 == expire) {
 		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "set", key, value, NULL);
 	} else {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "setx", key, value, expire, NULL);
+		char *expire_str = NULL;
+		spprintf(&expire_str, 0, "%ld", expire);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "setx", key, value, expire_str, NULL);
+		efree(expire_str);
 	}
 
 	if (key_free) efree(key);
