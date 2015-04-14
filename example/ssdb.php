@@ -5,13 +5,21 @@ $ssdb_handle = new SSDB();
 $ssdb_handle->connect('127.0.0.1', 8888);
 
 $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_');
-//使用压缩会导致类似substr命令返回出错
-$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
+//设置value压缩模式 使用压缩会导致类似substr命令返回出错
+//$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 
 $result = $ssdb_handle->auth("xingqiba");
 var_dump($result);
 
 $result = $ssdb_handle->set("name", "xingqiba");
+var_dump($result);
+
+echo "substr" . PHP_EOL;
+$result = $ssdb_handle->substr("name");
+var_dump($result);
+
+echo "substr" . PHP_EOL;
+$result = $ssdb_handle->substr("name", 1, 3);
 var_dump($result);
 
 $result = $ssdb_handle->get("name");

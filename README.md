@@ -151,6 +151,7 @@ $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_'); //设置key前缀
 //设置value压缩模式 使用压缩会导致类似substr命令返回出错
 $ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 ```
+
 #auth
 #####params####
 *password*
@@ -159,6 +160,7 @@ $ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 ```
 $ssdb_handle->auth('your_auth_password');
 ```
+
 #set
 #####params#####
 *key*
@@ -172,6 +174,7 @@ $ssdb_handle->auth('your_auth_password');
 $ssdb_handle->set('name', 'xingqiba');
 $ssdb_handle->set('blog', 'http://xingqiba.sinaapp.com/', 3600);
 ```
+
 #get
 #####params#####
 *key*
@@ -181,6 +184,90 @@ key存在返回对应value,否则返回NULL
 $ssdb_handle->get('name'); //xingqiba
 $ssdb_handle->get('blog'); //http://xingqiba.sinaapp.com/ or NULL
 ```
+
+#getset
+#####params#####
+*key*
+#####return#####
+key存在返回对应之前value,否则返回NULL
+```
+$ssdb_handle->getset('name', 'i am xingqiba'); //xingqiba
+$ssdb_handle->get('name'); //i am xingqiba
+$ssdb_handle-> getset('none'); //NULL
+```
+
+#del
+#####params#####
+*key*
+#####return#####
+bool
+```
+$ssdb_handle->del('none'); //true
+```
+
+#incr
+#####params#####
+*key*
+#####return#####
+int
+```
+$ssdb_handle->incr('hits', 1); //1
+$ssdb_handle->incr('hits', 1); //2
+```
+
+#exists
+#####params#####
+*key*
+#####return#####
+bool
+```
+$ssdb_handle-> exists('none'); //false
+```
+
+#setnx
+#####params#####
+*key*
+
+*key_value*
+#####return#####
+bool
+```
+$ssdb_handle->setnx('name', 'xingqiba'); //false
+```
+
+#expire
+#####params#####
+*key*
+
+*timeout*  单位 秒
+#####return#####
+bool
+```
+$ssdb_handle->expire('name', 60); //true
+$ssdb_handle->expire('none', 60); //false
+```
+
+#ttl
+#####params#####
+*key*
+#####return#####
+int
+```
+$ssdb_handle->ttl('name'); //60
+$ssdb_handle->ttl('none'); //0
+```
+
+#strlen
+#####params#####
+*key*
+#####return#####
+int
+```
+$ssdb_handle->set('versoion', '0.0.0');
+$ssdb_handle->strlen('versoion'); //5
+$ssdb_handle->strlen('none'); //0
+```
+
 #待更新...
 
 #TODO
