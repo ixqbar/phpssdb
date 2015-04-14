@@ -27,6 +27,7 @@ PHP_METHOD(SSDB, __construct);
 PHP_METHOD(SSDB, connect);
 PHP_METHOD(SSDB, auth);
 PHP_METHOD(SSDB, option);
+PHP_METHOD(SSDB, version);
 //string
 PHP_METHOD(SSDB, countbit);
 PHP_METHOD(SSDB, del);
@@ -90,6 +91,8 @@ PHP_METHOD(SSDB, zremrangebyscore);
 PHP_METHOD(SSDB, multi_zset);
 PHP_METHOD(SSDB, multi_zget);
 PHP_METHOD(SSDB, multi_zdel);
+PHP_METHOD(SSDB, zpop_front);
+PHP_METHOD(SSDB, zpop_back);
 //list
 PHP_METHOD(SSDB, qsize);
 PHP_METHOD(SSDB, qlist);

@@ -8,6 +8,10 @@ $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_');
 #设置value压缩模式 使用压缩会导致类似substr命令返回出错
 #$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 
+echo "version" . PHP_EOL;
+$result = $ssdb_handle->version();
+var_dump($result);
+
 $result = $ssdb_handle->auth("xingqiba");
 var_dump($result);
 

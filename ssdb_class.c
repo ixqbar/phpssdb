@@ -145,9 +145,13 @@ PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
 
 //构造函数
 PHP_METHOD(SSDB, __construct) {
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "") == FAILURE) {
-        RETURN_FALSE;
-    }
+	int num_args = ZEND_NUM_ARGS();
+	if (0 == num_args) RETURN_TRUE;
+	if (ssdb_connect(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0) == FAILURE) {
+		RETVAL_FALSE;
+	} else {
+		RETVAL_TRUE;
+	}
 }
 
 //选项设置
@@ -215,9 +219,9 @@ PHP_METHOD(SSDB, option) {
 //连接
 PHP_METHOD(SSDB, connect) {
 	if (ssdb_connect(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0) == FAILURE) {
-		RETURN_FALSE;
+		RETVAL_FALSE;
 	} else {
-		RETURN_TRUE;
+		RETVAL_TRUE;
 	}
 }
 
@@ -245,6 +249,31 @@ PHP_METHOD(SSDB, auth) {
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
 
 	ssdb_bool_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
+}
+
+//ssdb-server >= 1.9.0
+PHP_METHOD(SSDB, version) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *cmd = NULL;
+	int cmd_len = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O",
+			&object, ssdb_ce) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "version", NULL);
+
+	if (0 == cmd_len) RETURN_NULL();
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
+
+	ssdb_string_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
 }
 
 PHP_METHOD(SSDB, set) {
@@ -2384,6 +2413,78 @@ PHP_METHOD(SSDB, multi_zdel) {
 	ssdb_long_number_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
 }
 
+PHP_METHOD(SSDB, zpop_front) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *key = NULL, *cmd = NULL;
+	int key_len = 0, key_free = 0, cmd_len = 0;
+	long size = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osl",
+			&object, ssdb_ce,
+			&key, &key_len,
+			&size) == FAILURE
+			|| 0 == key_len
+			|| size <= 0) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
+
+	char *size_str = NULL;
+	spprintf(&size_str, 0, "%ld", size);
+
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zpop_front", key, size_str, NULL);
+
+	efree(size_str);
+	if (key_free) efree(key);
+	if (0 == cmd_len) RETURN_NULL();
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
+
+	ssdb_map_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock, SSDB_FILTER_KEY_PREFIX_NONE, SSDB_UNSERIALIZE_NONE, SSDB_CONVERT_TO_LONG);
+}
+
+PHP_METHOD(SSDB, zpop_back) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *key = NULL, *cmd = NULL;
+	int key_len = 0, key_free = 0, cmd_len = 0;
+	long size = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osl",
+			&object, ssdb_ce,
+			&key, &key_len,
+			&size) == FAILURE
+			|| 0 == key_len
+			|| size <= 0) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
+
+	char *size_str = NULL;
+	spprintf(&size_str, 0, "%ld", size);
+
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zpop_back", key, size_str, NULL);
+
+	efree(size_str);
+	if (key_free) efree(key);
+	if (0 == cmd_len) RETURN_NULL();
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
+
+	ssdb_map_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock, SSDB_FILTER_KEY_PREFIX_NONE, SSDB_UNSERIALIZE_NONE, SSDB_CONVERT_TO_LONG);
+}
+
 PHP_METHOD(SSDB, qsize) {
 	zval *object;
 	SSDBSock *ssdb_sock;
@@ -3103,6 +3204,7 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, option,      NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, connect,     NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, auth,        NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, version,     NULL, ZEND_ACC_PUBLIC)
 	//string
 	PHP_ME(SSDB, countbit,    NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, del,         NULL, ZEND_ACC_PUBLIC)
@@ -3166,6 +3268,8 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, multi_zset,  NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, multi_zget,  NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, multi_zdel,  NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, zpop_front,  NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, zpop_back,   NULL, ZEND_ACC_PUBLIC)
 	//list
 	PHP_ME(SSDB, qsize,       NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, qlist,       NULL, ZEND_ACC_PUBLIC)
@@ -3185,6 +3289,9 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, qpop_back,   NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, qtrim_front, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, qtrim_back,  NULL, ZEND_ACC_PUBLIC)
+	//alias
+	PHP_MALIAS(SSDB, open, connect, NULL, ZEND_ACC_PUBLIC)
+	PHP_MALIAS(SSDB, setx, set,     NULL, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 
@@ -3216,4 +3323,6 @@ void register_ssdb_class(int module_number TSRMLS_DC) {
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_NONE"),     SSDB_SERIALIZER_NONE TSRMLS_CC);
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_PHP"),      SSDB_SERIALIZER_PHP TSRMLS_CC);
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_IGBINARY"), SSDB_SERIALIZER_IGBINARY TSRMLS_CC);
+
+	zend_register_class_alias_ex(ZEND_STRL("SimpleSSDB"), ssdb_ce TSRMLS_CC);
 }

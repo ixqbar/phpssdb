@@ -8,14 +8,13 @@
  * unit test.
  */
 
-class PHPSSDBTest extends UnitTest{
+class SimpleSSDBTest extends UnitTest{
     private $ssdb;
 
     function __construct(){
         $host = '127.0.0.1';
         $port = 8888;
-        $this->ssdb = new SSDB();
-        $this->ssdb->connect($host, $port);
+        $this->ssdb = new SimpleSSDB($host, $port);
         $this->ssdb->auth('very-strong-password-11111111111111111');
         $this->clear();
     }
@@ -75,7 +74,7 @@ class PHPSSDBTest extends UnitTest{
         $ssdb = $this->ssdb;
         $val = str_repeat(mt_rand(), mt_rand(1, 100));
 
-        $ssdb->set('TEST_a', $val, 1);
+        $ssdb->setx('TEST_a', $val, 1);
         $ret = $this->ssdb->get('TEST_a');
         $this->assert($ret === $val);
         usleep(1.5 * 1000 * 1000);
@@ -532,5 +531,5 @@ class UnitTest{
 
 }
 
-$test = new PHPSSDBTest();
+$test = new SimpleSSDBTest();
 $test->run();

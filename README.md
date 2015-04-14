@@ -9,6 +9,7 @@
    * [connect](#connect)
    * [option](#option)
    * [auth](#auth)
+   * [version](#version)
 2. [string]
    * [set/setx](#set)
    * [get](#get)
@@ -72,8 +73,10 @@
    * [zremrangebyrank](#zremrangebyrank)
    * [zremrangebyscore](#zremrangebyscore)
    * [multi_zset](#multi_zset)
-	* [multi_zget](#multi_zget)
-	* [multi_zdel](#multi_zdel)
+   * [multi_zget](#multi_zget)
+   * [multi_zdel](#multi_zdel)
+   * [zpop_front](#zpop_front)
+   * [zpop_back](#zpop_back)
 5. [list]  
 	* [qsize](#qsize)
 	* [qlist](#qlist)
@@ -106,12 +109,14 @@ make install
 
 #usage
 ```
-$ssdb_handle = new SSDB();
+$ssdb_handle = new SSDB(); 
+//可省略connect方法使用$ssdb_handle = new SSDB('127.0.0.1', 8888); 
 $ssdb_handle->connect('127.0.0.1', 8888);
 $ssdb_handle->set('ssdb_version', '1.8.0');
 $ssdb_handle->get('ssdb_version');
 ```
 * 本扩展支持的所有命令如果返回为NULL，代表可能的错误为命令参数错误、连接中断、服务器返回失败、客户端发送失败等
+* 为兼容官方php代码实现的客户端，提供类别名SimpleSSDB 如 $ssdb_handle = new SimpleSSDB('127.0.0.1', 8888);
 
 #connect
 #####params#####
@@ -159,6 +164,15 @@ $ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 成功true,失败false
 ```
 $ssdb_handle->auth('your_auth_password');
+```
+
+#version
+#####params####
+*void*
+#####return####
+string or NULL
+```
+$ssdb_handle->version(); //ssdb-server版本>=1.9.0
 ```
 
 #set
