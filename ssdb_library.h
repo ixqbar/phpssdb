@@ -34,6 +34,9 @@
 #define SSDB_UNSERIALIZE_NONE 0
 #define SSDB_UNSERIALIZE 1
 
+#define SSDB_CONVERT_TO_STRING 0
+#define SSDB_CONVERT_TO_LONG 1
+
 #define _NL "\n"
 
 typedef enum {SSDB_IS_DEFAULT,SSDB_IS_OK,SSDB_IS_NOT_FOUND,SSDB_IS_ERROR,SSDB_IS_FAIL,SSDB_IS_CLIENT_ERROR} ssdb_response_status;
@@ -122,10 +125,11 @@ int resend_auth(SSDBSock *ssdb_sock);
 int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, int *val_len);
 int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, int val_len, zval **return_value);
 
-void ssdb_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
+void ssdb_long_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
+void ssdb_double_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
 void ssdb_bool_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
 void ssdb_string_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
 void ssdb_list_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int filter_prefix, int unserialize);
-void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int filter_prefix, int unserialize);
+void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int filter_prefix, int unserialize, int convert_type);
 
 #endif /* EXT_SSDB_SSDB_LIBRARY_H_ */

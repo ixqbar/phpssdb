@@ -5,8 +5,8 @@ $ssdb_handle = new SSDB();
 $ssdb_handle->connect('127.0.0.1', 8888);
 
 $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_');
-//设置value压缩模式 使用压缩会导致类似substr命令返回出错
-//$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
+#设置value压缩模式 使用压缩会导致类似substr命令返回出错
+#$ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 
 $result = $ssdb_handle->auth("xingqiba");
 var_dump($result);
@@ -40,7 +40,7 @@ var_dump($result);
 $result = $ssdb_handle->get("blog");
 var_dump($result);
 
-$result = $ssdb_handle->set("blog", "http://xingqiba.sinaapp.com/", 5);
+$result = $ssdb_handle->set("blog", "http:xingqiba.sinaapp.com/", 5);
 var_dump($result);
 
 sleep(3);
@@ -53,7 +53,7 @@ sleep(3);
 $result = $ssdb_handle->get("blog");
 var_dump($result);
 
-$result = $ssdb_handle->set("blog", "http://xingqiba.sinaapp.com/index.php");
+$result = $ssdb_handle->set("blog", "http:xingqiba.sinaapp.com/index.php");
 var_dump($result);
 
 $result = $ssdb_handle->expire("blog", 5);
@@ -69,10 +69,10 @@ $result = $ssdb_handle->get("blog");
 var_dump($result);
 
 echo "getset" . PHP_EOL;
-$result = $ssdb_handle->getset("blog", "http://xingqiba.sinaapp.com/index.php");
+$result = $ssdb_handle->getset("blog", "http:xingqiba.sinaapp.com/index.php");
 var_dump($result);
 
-$result = $ssdb_handle->getset("blog", "http://xingqiba.sinaapp.com/");
+$result = $ssdb_handle->getset("blog", "http:xingqiba.sinaapp.com/");
 var_dump($result);
 
 $result = $ssdb_handle->get("blog");
@@ -155,7 +155,7 @@ $result = $ssdb_handle->hset("blog_list", "php_ssdb_extension", "20150413");
 var_dump($result);
 
 echo "hset" . PHP_EOL;
-$result = $ssdb_handle->hset("blog_list", "php_ssdb_url", "http://xingqiba.sinaapp.com/");
+$result = $ssdb_handle->hset("blog_list", "php_ssdb_url", "http:xingqiba.sinaapp.com/");
 var_dump($result);
 
 echo "hget" . PHP_EOL;
@@ -241,7 +241,7 @@ echo "multi_hget" . PHP_EOL;
 $result = $ssdb_handle->multi_hget("blog_list", array("name", "location"));
 var_dump($result);
 
-//set
+#set
 echo "zclear" . PHP_EOL;
 $result = $ssdb_handle->zclear("blog_online");
 var_dump($result);
@@ -258,7 +258,7 @@ echo "zset" . PHP_EOL;
 $result = $ssdb_handle->zset("blog_online", "wangwu", 3);
 var_dump($result);
 
-//ssdb的set不支持double
+#ssdb的set不支持double
 echo "multi_zset" . PHP_EOL;
 $result = $ssdb_handle->multi_zset("blog_online", array("guanyu" => 4.4, "liubei" => 5.12));
 var_dump($result);
@@ -359,9 +359,21 @@ echo "multi_zget" . PHP_EOL;
 $result = $ssdb_handle->multi_zget("blog_online", array("guanyu", "liubei"));
 var_dump($result);
 
-//list
+echo "qclear" . PHP_EOL;
+$result = $ssdb_handle->qclear("queue");
+var_dump($result);
+
+#list
 echo "qsize" . PHP_EOL;
 $result = $ssdb_handle->qsize("queue");
+var_dump($result);
+
+echo "qpush" . PHP_EOL;
+$result = $ssdb_handle->qpush("queue", 1);
+var_dump($result);
+
+echo "qpush array" . PHP_EOL;
+$result = $ssdb_handle->qpush("queue", array(1, 2, 3));
 var_dump($result);
 
 echo "qset" . PHP_EOL;
