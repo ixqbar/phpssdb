@@ -466,7 +466,8 @@ PHP_METHOD(SSDB, setbit) {
 			&key, &key_len,
 			&offset_index,
 			&offset_value) == FAILURE
-			|| 0 == key_len) {
+			|| 0 == key_len
+			|| (offset_value != 0 && offset_value != 1)) {
 		RETURN_NULL();
 	}
 
@@ -1078,9 +1079,9 @@ PHP_METHOD(SSDB, hincr) {
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key = NULL, *cmd = NULL;
 	int hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
-	long incr_number;
+	long incr_number = 1;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss|l",
 			&object, ssdb_ce,
 			&hash_key, &hash_key_len,
 			&key, &key_len,
@@ -2418,9 +2419,9 @@ PHP_METHOD(SSDB, zpop_front) {
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
 	int key_len = 0, key_free = 0, cmd_len = 0;
-	long size = 0;
+	long size = 1;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osl",
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
 			&object, ssdb_ce,
 			&key, &key_len,
 			&size) == FAILURE
@@ -2454,9 +2455,9 @@ PHP_METHOD(SSDB, zpop_back) {
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
 	int key_len = 0, key_free = 0, cmd_len = 0;
-	long size = 0;
+	long size = 1;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osl",
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
 			&object, ssdb_ce,
 			&key, &key_len,
 			&size) == FAILURE
