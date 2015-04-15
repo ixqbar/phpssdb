@@ -829,7 +829,7 @@ void ssdb_list_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int f
     SSDBResponseBlock *ssdb_response_block = ssdb_response->block;
     while (ssdb_response_block != NULL) {
     	zval *z = NULL;
-    	if (filter_prefix
+    	if (filter_prefix == SSDB_FILTER_KEY_PREFIX
     			&& ssdb_sock->prefix
 				&& 0 == strncmp(ssdb_response_block->data, ssdb_sock->prefix, ssdb_sock->prefix_len)) {
     		if (unserialize == SSDB_UNSERIALIZE_NONE) {

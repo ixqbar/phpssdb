@@ -9,6 +9,8 @@
    * [option](#option)
    * [auth](#auth)
    * [version](#version)
+   * [dbsize](#dbsize)
+   * [request](#request)
 2. [string]
    * [set](#set)
    * [setx](#set)
@@ -173,6 +175,25 @@ $ssdb_handle->auth('your_auth_password');
 string or NULL
 ```
 $ssdb_handle->version(); //ssdb-server版本>=1.9.0
+```
+
+#dbsize
+#####params####
+*void*
+#####return####
+long
+```
+$ssdb_handle->dbsize();
+```
+
+#request
+#####params####
+*params*
+#####return####
+array
+```
+$ssdb_handle->request('multi_hset', 'info', 'name', 'xingqiba', 'version', '1.0.0'); //array(2)
+$ssdb_handle->request('hgetall', 'info'); //array('name', 'xingqiba', 'version', '1.0.0')
 ```
 
 #set

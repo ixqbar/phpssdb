@@ -432,8 +432,8 @@ class SimpleSSDBTest extends UnitTest{
         $this->assert($ret === null);
 
         $ssdb->zclear($name);
-        //$ssdb->request('multi_zset', $name, 'a', '1', 'b', '2', 'c', '3', 'd', '4', 'e', '5');
-        $ssdb->multi_zset($name, array('a' => '1', 'b' => '2', 'c' => '3', 'd' => '4', 'e' => '5'));
+        $ssdb->request('multi_zset', $name, 'a', '1', 'b', '2', 'c', '3', 'd', '4', 'e', '5');
+        //$ssdb->multi_zset($name, array('a' => '1', 'b' => '2', 'c' => '3', 'd' => '4', 'e' => '5'));
         $ret = $ssdb->zcount($name, 2, 4);
         $this->assert($ret === 3);
         $ret = $ssdb->zsum($name, 2, 4);

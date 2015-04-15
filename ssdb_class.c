@@ -225,6 +225,41 @@ PHP_METHOD(SSDB, connect) {
 	}
 }
 
+PHP_METHOD(SSDB, request) {
+	zval **z_args;
+	SSDBSock *ssdb_sock;
+	int argc = ZEND_NUM_ARGS(), i;
+	smart_str cmd = {0};
+
+	z_args = emalloc(argc * sizeof(zval*));
+	if (argc < 1 || zend_get_parameters_array(ht, argc, z_args) == FAILURE) {
+		efree(z_args);
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(getThis(), &ssdb_sock TSRMLS_CC, 0) < 0) {
+		efree(z_args);
+		RETURN_NULL();
+	}
+
+	smart_str buf = {0};
+	for (i = 0; i < argc; i++) {
+		convert_to_string(z_args[i]);
+		smart_str_append_long(&buf, Z_STRLEN_P(z_args[i]));
+		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+		smart_str_appendl(&buf, Z_STRVAL_P(z_args[i]), Z_STRLEN_P(z_args[i]));
+		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+	}
+	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+	smart_str_0(&buf);
+
+	efree(z_args);
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, buf.c, buf.len);
+
+	ssdb_list_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock, SSDB_FILTER_KEY_PREFIX, SSDB_UNSERIALIZE_NONE);
+}
+
 PHP_METHOD(SSDB, auth) {
 	zval *object;
 	SSDBSock *ssdb_sock;
@@ -277,6 +312,30 @@ PHP_METHOD(SSDB, version) {
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
 
 	ssdb_string_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
+}
+
+PHP_METHOD(SSDB, dbsize) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *cmd = NULL;
+	int cmd_len = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O",
+			&object, ssdb_ce) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("dbsize"), NULL);
+
+	if (0 == cmd_len) RETURN_NULL();
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
+
+	ssdb_long_number_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
 }
 
 PHP_METHOD(SSDB, set) {
@@ -3209,6 +3268,9 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, connect,     NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, auth,        NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, version,     NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, dbsize,      NULL, ZEND_ACC_PUBLIC)
+	//command
+	PHP_ME(SSDB, request,     NULL, ZEND_ACC_PUBLIC)
 	//string
 	PHP_ME(SSDB, countbit,    NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, del,         NULL, ZEND_ACC_PUBLIC)

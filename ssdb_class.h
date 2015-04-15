@@ -28,6 +28,9 @@ PHP_METHOD(SSDB, connect);
 PHP_METHOD(SSDB, auth);
 PHP_METHOD(SSDB, option);
 PHP_METHOD(SSDB, version);
+PHP_METHOD(SSDB, dbsize);
+//command
+PHP_METHOD(SSDB, request);
 //string
 PHP_METHOD(SSDB, countbit);
 PHP_METHOD(SSDB, del);
