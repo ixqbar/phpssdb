@@ -242,9 +242,12 @@ PHP_METHOD(SSDB, auth) {
 		RETURN_NULL();
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "auth", password, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("auth"), password, password_len, NULL);
 
 	if (0 == cmd_len) RETURN_NULL();
+
+	if (ssdb_sock->auth) efree(ssdb_sock->auth);
+	ssdb_sock->auth = estrndup(password, password_len);
 
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
 
@@ -267,7 +270,7 @@ PHP_METHOD(SSDB, version) {
 		RETURN_NULL();
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "version", NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("version"), NULL);
 
 	if (0 == cmd_len) RETURN_NULL();
 
@@ -303,11 +306,11 @@ PHP_METHOD(SSDB, set) {
 	value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 
 	if (0 == expire) {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "set", key, value, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("set"), key, key_len, value, value_len, NULL);
 	} else {
 		char *expire_str = NULL;
-		spprintf(&expire_str, 0, "%ld", expire);
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "setx", key, value, expire_str, NULL);
+		int expire_str_len = spprintf(&expire_str, 0, "%ld", expire);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("setx"), key, key_len, value, value_len, expire_str, expire_str_len, NULL);
 		efree(expire_str);
 	}
 
@@ -343,7 +346,7 @@ PHP_METHOD(SSDB, getset) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "getset", key, value, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("getset"), key, key_len, value, value_len, NULL);
 
 	if (key_free) efree(key);
 	if (value_free) STR_FREE(value);
@@ -377,20 +380,20 @@ PHP_METHOD(SSDB, countbit) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	if (1 == num_args) {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "countbit", key, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("countbit"), key, key_len, NULL);
 	} else if (2 == num_args) {
 		char *offset_index_str = NULL;
 		spprintf(&offset_index_str, 0, "%ld", offset_index);
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "countbit", key, offset_index_str, NULL);
+		int offset_index_str_len = cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("countbit"), key, key_len, offset_index_str, offset_index_str_len, NULL);
 		efree(offset_index_str);
 	} else {
 		char *offset_index_str = NULL;
 		char *offset_size_str = NULL;
 
-		spprintf(&offset_index_str, 0, "%ld", offset_index);
-		spprintf(&offset_size_str, 0, "%ld", offset_size);
+		int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
+		int offset_size_str_len = spprintf(&offset_size_str, 0, "%ld", offset_size);
 
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "countbit", key, offset_index_str, offset_size_str, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("countbit"), key, key_len, offset_index_str, offset_index_str_len, offset_size_str, offset_size_str_len, NULL);
 
 		efree(offset_index_str);
 		efree(offset_size_str);
@@ -427,20 +430,20 @@ PHP_METHOD(SSDB, substr) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	if (1 == num_args) {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "substr", key, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("substr"), key, key_len, NULL);
 	} else if (2 == num_args) {
 		char *offset_index_str = NULL;
-		spprintf(&offset_index_str, 0, "%ld", offset_index);
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "substr", key, offset_index_str, NULL);
+		int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("substr"), key, key_len, offset_index_str, offset_index_str_len, NULL);
 		efree(offset_index_str);
 	} else {
 		char *offset_index_str = NULL;
 		char *offset_size_str = NULL;
 
-		spprintf(&offset_index_str, 0, "%ld", offset_index);
-		spprintf(&offset_size_str, 0, "%ld", offset_size);
+		int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
+		int offset_size_str_len = spprintf(&offset_size_str, 0, "%ld", offset_size);
 
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "substr", key, offset_index_str, offset_size_str, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("substr"), key, key_len, offset_index_str, offset_index_str_len, offset_size_str, offset_size_str_len, NULL);
 
 		efree(offset_index_str);
 		efree(offset_size_str);
@@ -476,14 +479,14 @@ PHP_METHOD(SSDB, setbit) {
 	}
 
 	char *offset_index_str = NULL;
-	spprintf(&offset_index_str, 0, "%ld", offset_index);
+	int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
 
 	char *offset_value_str = NULL;
-	spprintf(&offset_value_str, 0, "%ld", offset_value);
+	int offset_value_str_len = spprintf(&offset_value_str, 0, "%ld", offset_value);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "setbit", key, offset_index_str, offset_value_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("setbit"), key, key_len, offset_index_str, offset_index_str_len, offset_value_str, offset_value_str_len, NULL);
 
 	efree(offset_index_str);
 	efree(offset_value_str);
@@ -518,7 +521,7 @@ PHP_METHOD(SSDB, setnx) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "setnx", key, value, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("setnx"), key, key_len, value, value_len, NULL);
 
 	if (key_free) efree(key);
 	if (value_free) STR_FREE(value);
@@ -547,7 +550,7 @@ PHP_METHOD(SSDB, del) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "del", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("del"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -575,7 +578,7 @@ PHP_METHOD(SSDB, exists) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "exists", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("exists"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -603,7 +606,7 @@ PHP_METHOD(SSDB, get) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "get", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("get"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -631,7 +634,7 @@ PHP_METHOD(SSDB, strlen) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "strlen", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("strlen"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -661,10 +664,10 @@ PHP_METHOD(SSDB, getbit) {
 	}
 
 	char *offset_str = NULL;
-	spprintf(&offset_str, 0, "%ld", offset);
+	int offset_str_len = spprintf(&offset_str, 0, "%ld", offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "getbit", key, offset_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("getbit"), key, key_len, offset_str, offset_str_len, NULL);
 
 	efree(offset_str);
 	if (key_free) efree(key);
@@ -693,7 +696,7 @@ PHP_METHOD(SSDB, ttl) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "ttl", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("ttl"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -723,10 +726,10 @@ PHP_METHOD(SSDB, incr) {
 	}
 
 	char *incr_number_str = NULL;
-	spprintf(&incr_number_str, 0, "%ld", incr_number);
+	int incr_number_str_len = spprintf(&incr_number_str, 0, "%ld", incr_number);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "incr", key, incr_number_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("incr"), key, key_len, incr_number_str, incr_number_str_len, NULL);
 
 	efree(incr_number_str);
 	if (key_free) efree(key);
@@ -756,11 +759,11 @@ PHP_METHOD(SSDB, expire) {
 	}
 
 	char *expire_str = NULL;
-	spprintf(&expire_str, 0, "%ld", expire);
+	int expire_str_len = spprintf(&expire_str, 0, "%ld", expire);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "expire", key, expire_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("expire"), key, key_len, expire_str, expire_str_len, NULL);
 
 	efree(expire_str);
 	if (key_free) efree(key);
@@ -792,7 +795,7 @@ PHP_METHOD(SSDB, keys) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -802,7 +805,7 @@ PHP_METHOD(SSDB, keys) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "keys", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("keys"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -835,7 +838,7 @@ PHP_METHOD(SSDB, scan) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -845,7 +848,7 @@ PHP_METHOD(SSDB, scan) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "scan", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("scan"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -878,7 +881,7 @@ PHP_METHOD(SSDB, rscan) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -888,7 +891,7 @@ PHP_METHOD(SSDB, rscan) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "rscan", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("rscan"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -1003,7 +1006,7 @@ PHP_METHOD(SSDB, hset) {
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
 	key_value_free = ssdb_serialize(ssdb_sock, z_value, &key_value, &key_value_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hset", hash_key, key, key_value, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hset"), hash_key, hash_key_len, key, key_len, key_value, key_value_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (key_value_free) STR_FREE(key_value);
@@ -1034,7 +1037,7 @@ PHP_METHOD(SSDB, hget) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hget", hash_key, key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hget"), hash_key, hash_key_len, key, key_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1064,7 +1067,7 @@ PHP_METHOD(SSDB, hdel) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hdel", hash_key, key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hdel"), hash_key, hash_key_len, key, key_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1096,10 +1099,10 @@ PHP_METHOD(SSDB, hincr) {
 	}
 
 	char *incr_number_str = NULL;
-	spprintf(&incr_number_str, 0, "%ld", incr_number);
+	int incr_number_str_len = spprintf(&incr_number_str, 0, "%ld", incr_number);
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hincr", hash_key, key, incr_number_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hincr"), hash_key, hash_key_len, key, key_len, incr_number_str, incr_number_str_len, NULL);
 
 	efree(incr_number_str);
 	if (hash_key_free) efree(hash_key);
@@ -1130,7 +1133,7 @@ PHP_METHOD(SSDB, hexists) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hexists", hash_key, key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hexists"), hash_key, hash_key_len, key, key_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1158,7 +1161,7 @@ PHP_METHOD(SSDB, hsize) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hsize", hash_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hsize"), hash_key, hash_key_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1189,7 +1192,7 @@ PHP_METHOD(SSDB, hlist) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1199,7 +1202,7 @@ PHP_METHOD(SSDB, hlist) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hlist", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hlist"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -1232,7 +1235,7 @@ PHP_METHOD(SSDB, hrlist) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1242,7 +1245,7 @@ PHP_METHOD(SSDB, hrlist) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hrlist", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hrlist"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -1277,10 +1280,10 @@ PHP_METHOD(SSDB, hkeys) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hkeys", hash_key, key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hkeys"), hash_key, hash_key_len, key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (hash_key_free) efree(hash_key);
@@ -1309,7 +1312,7 @@ PHP_METHOD(SSDB, hgetall) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hgetall", hash_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hgetall"), hash_key, hash_key_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1342,10 +1345,10 @@ PHP_METHOD(SSDB, hscan) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hscan", hash_key, key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hscan"), hash_key, hash_key_len, key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (hash_key_free) efree(hash_key);
@@ -1379,10 +1382,10 @@ PHP_METHOD(SSDB, hrscan) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hrscan", hash_key, key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hrscan"), hash_key, hash_key_len, key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (hash_key_free) efree(hash_key);
@@ -1411,7 +1414,7 @@ PHP_METHOD(SSDB, hclear) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "hclear", hash_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hclear"), hash_key, hash_key_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1441,7 +1444,7 @@ PHP_METHOD(SSDB, multi_hset) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "multi_hset", 10, hash_key, hash_key_len, z_args, 1, 0, 1);
+	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("multi_hset"), hash_key, hash_key_len, z_args, 1, 0, 1);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1471,7 +1474,7 @@ PHP_METHOD(SSDB, multi_hget) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "multi_hget", 10, hash_key, hash_key_len, z_args, 0, 0, 0);
+	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("multi_hget"), hash_key, hash_key_len, z_args, 0, 0, 0);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1501,7 +1504,7 @@ PHP_METHOD(SSDB, multi_hdel) {
 	}
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
-	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "multi_hdel", 10, hash_key, hash_key_len, z_args, 0, 0, 0);
+	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("multi_hdel"), hash_key, hash_key_len, z_args, 0, 0, 0);
 
 	if (hash_key_free) efree(hash_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1533,11 +1536,11 @@ PHP_METHOD(SSDB, zset) {
 	}
 
 	char *member_score_str = NULL;
-	spprintf(&member_score_str, 0, "%ld", member_score);
+	int member_score_str_len = spprintf(&member_score_str, 0, "%ld", member_score);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zset", key, member_key, member_score_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zset"), key, key_len, member_key, member_key_len, member_score_str, member_score_str_len, NULL);
 
 	efree(member_score_str);
 	if (key_free) efree(key);
@@ -1569,7 +1572,7 @@ PHP_METHOD(SSDB, zget) {
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zget", key, member_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zget"), key, key_len, member_key, member_key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1600,7 +1603,7 @@ PHP_METHOD(SSDB, zdel) {
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zdel", key, member_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zdel"), key, key_len, member_key, member_key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1632,11 +1635,11 @@ PHP_METHOD(SSDB, zincr) {
 	}
 
 	char *member_score_str = NULL;
-	spprintf(&member_score_str, 0, "%ld", member_score);
+	int member_score_str_len = spprintf(&member_score_str, 0, "%ld", member_score);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zincr", key, member_key, member_score_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zincr"), key, key_len, member_key, member_key_len, member_score_str, member_score_str_len, NULL);
 
 	efree(member_score_str);
 	if (key_free) efree(key);
@@ -1667,7 +1670,7 @@ PHP_METHOD(SSDB, zsize) {
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zsize", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zsize"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1698,7 +1701,7 @@ PHP_METHOD(SSDB, zlist) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1708,7 +1711,7 @@ PHP_METHOD(SSDB, zlist) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zlist", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zlist"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -1741,7 +1744,7 @@ PHP_METHOD(SSDB, zrlist) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1751,7 +1754,7 @@ PHP_METHOD(SSDB, zrlist) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zrlist", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrlist"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -1784,7 +1787,7 @@ PHP_METHOD(SSDB, zexists) {
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zexists", key, member_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zexists"), key, key_len, member_key, member_key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -1835,10 +1838,10 @@ PHP_METHOD(SSDB, zkeys) {
 	convert_to_string(score_end);
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zkeys", key, key_start, Z_STRVAL_P(score_start), Z_STRVAL_P(score_end), limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zkeys"), key, key_len, key_start, key_start_len, Z_STRVAL_P(score_start), Z_STRLEN_P(score_start),  Z_STRVAL_P(score_end), Z_STRLEN_P(score_end), limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_free) efree(key);
@@ -1890,10 +1893,10 @@ PHP_METHOD(SSDB, zscan) {
 	convert_to_string(score_end);
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zscan", key, key_start, Z_STRVAL_P(score_start), Z_STRVAL_P(score_end), limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zscan"), key, key_len, key_start, key_start_len, Z_STRVAL_P(score_start), Z_STRLEN_P(score_start), Z_STRVAL_P(score_end), Z_STRLEN_P(score_end), limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_free) efree(key);
@@ -1945,10 +1948,10 @@ PHP_METHOD(SSDB, zrscan) {
 	convert_to_string(score_end);
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zrscan", key, key_start, Z_STRVAL_P(score_start), Z_STRVAL_P(score_end), limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrscan"), key, key_len, key_start, key_start_len, Z_STRVAL_P(score_start), Z_STRLEN_P(score_start), Z_STRVAL_P(score_end), Z_STRLEN_P(score_end), limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_free) efree(key);
@@ -1980,7 +1983,7 @@ PHP_METHOD(SSDB, zrank) {
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zrank", key, member_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrank"), key, key_len, member_key, member_key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2011,7 +2014,7 @@ PHP_METHOD(SSDB, zrrank) {
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zrrank", key, member_key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrrank"), key, key_len, member_key, member_key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2043,13 +2046,13 @@ PHP_METHOD(SSDB, zrange) {
 	}
 
 	char *start_offset_str = NULL;
-	spprintf(&start_offset_str, 0, "%ld", start_offset);
+	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zrange", key, start_offset_str, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrange"), key, key_len, start_offset_str, start_offset_str_len, limit_str, limit_str_len, NULL);
 
 	efree(start_offset_str);
 	efree(limit_str);
@@ -2083,13 +2086,13 @@ PHP_METHOD(SSDB, zrrange) {
 	}
 
 	char *start_offset_str = NULL;
-	spprintf(&start_offset_str, 0, "%ld", start_offset);
+	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zrrange", key, start_offset_str, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrrange"), key, key_len, start_offset_str, start_offset_str_len, limit_str, limit_str_len, NULL);
 
 	efree(start_offset_str);
 	efree(limit_str);
@@ -2119,7 +2122,7 @@ PHP_METHOD(SSDB, zclear) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zclear", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zclear"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2150,13 +2153,13 @@ PHP_METHOD(SSDB, zcount) {
 	}
 
 	char *score_start_str = NULL;
-	spprintf(&score_start_str, 0, "%ld", score_start);
+	int score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
 
 	char *score_end_str = NULL;
-	spprintf(&score_end_str, 0, "%ld", score_end);
+	int score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zcount", key, score_start_str, score_end_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zcount"), key, key_len, score_start_str, score_start_str_len, score_end_str, score_end_str_len, NULL);
 
 	efree(score_start_str);
 	efree(score_end_str);
@@ -2189,13 +2192,13 @@ PHP_METHOD(SSDB, zsum) {
 	}
 
 	char *score_start_str = NULL;
-	spprintf(&score_start_str, 0, "%ld", score_start);
+	int score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
 
 	char *score_end_str = NULL;
-	spprintf(&score_end_str, 0, "%ld", score_end);
+	int score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zsum", key, score_start_str, score_end_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zsum"), key, key_len, score_start_str, score_start_str_len, score_end_str, score_end_str_len, NULL);
 
 	efree(score_start_str);
 	efree(score_end_str);
@@ -2228,13 +2231,13 @@ PHP_METHOD(SSDB, zavg) {
 	}
 
 	char *score_start_str = NULL;
-	spprintf(&score_start_str, 0, "%ld", score_start);
+	int score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
 
 	char *score_end_str = NULL;
-	spprintf(&score_end_str, 0, "%ld", score_end);
+	int score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zavg", key, score_start_str, score_end_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zavg"), key, key_len, score_start_str, score_start_str_len, score_end_str, score_end_str_len, NULL);
 
 	efree(score_start_str);
 	efree(score_end_str);
@@ -2267,13 +2270,13 @@ PHP_METHOD(SSDB, zremrangebyrank) {
 	}
 
 	char *start_offset_str = NULL;
-	spprintf(&start_offset_str, 0, "%ld", start_offset);
+	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *end_offset_str = NULL;
-	spprintf(&end_offset_str, 0, "%ld", end_offset);
+	int end_offset_str_len = spprintf(&end_offset_str, 0, "%ld", end_offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zremrangebyrank", key, start_offset_str, end_offset_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zremrangebyrank"), key, key_len, start_offset_str, start_offset_str_len, end_offset_str, end_offset_str_len, NULL);
 
 	efree(start_offset_str);
 	efree(end_offset_str);
@@ -2306,13 +2309,13 @@ PHP_METHOD(SSDB, zremrangebyscore) {
 	}
 
 	char *start_score_str = NULL;
-	spprintf(&start_score_str, 0, "%ld", start_score);
+	int start_score_str_len = spprintf(&start_score_str, 0, "%ld", start_score);
 
 	char *end_score_str = NULL;
-	spprintf(&end_score_str, 0, "%ld", end_score);
+	int end_score_str_len= spprintf(&end_score_str, 0, "%ld", end_score);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zremrangebyscore", key, start_score_str, end_score_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zremrangebyscore"), key, key_len, start_score_str, start_score_str_len, end_score_str, end_score_str_len, NULL);
 
 	efree(start_score_str);
 	efree(end_score_str);
@@ -2344,7 +2347,7 @@ PHP_METHOD(SSDB, multi_zset) {
 	}
 
 	set_key_free = ssdb_key_prefix(ssdb_sock, &set_key, &set_key_len);
-	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "multi_zset", 10, set_key, set_key_len, z_args, 1, 0, 0);
+	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("multi_zset"), set_key, set_key_len, z_args, 1, 0, 0);
 
 	if (set_key_free) efree(set_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2374,7 +2377,7 @@ PHP_METHOD(SSDB, multi_zget) {
 	}
 
 	set_key_free = ssdb_key_prefix(ssdb_sock, &set_key, &set_key_len);
-	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "multi_zget", 10, set_key, set_key_len, z_args, 0, 0, 0);
+	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("multi_zget"), set_key, set_key_len, z_args, 0, 0, 0);
 
 	if (set_key_free) efree(set_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2404,7 +2407,7 @@ PHP_METHOD(SSDB, multi_zdel) {
 	}
 
 	set_key_free = ssdb_key_prefix(ssdb_sock, &set_key, &set_key_len);
-	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "multi_zdel", 10, set_key, set_key_len, z_args, 0, 0, 0);
+	cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("multi_zdel"), set_key, set_key_len, z_args, 0, 0, 0);
 
 	if (set_key_free) efree(set_key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2437,9 +2440,9 @@ PHP_METHOD(SSDB, zpop_front) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	spprintf(&size_str, 0, "%ld", size);
+	int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zpop_front", key, size_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zpop_front"), key, key_len, size_str, size_str_len, NULL);
 
 	efree(size_str);
 	if (key_free) efree(key);
@@ -2473,9 +2476,9 @@ PHP_METHOD(SSDB, zpop_back) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	spprintf(&size_str, 0, "%ld", size);
+	int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "zpop_back", key, size_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zpop_back"), key, key_len, size_str, size_str_len, NULL);
 
 	efree(size_str);
 	if (key_free) efree(key);
@@ -2504,7 +2507,7 @@ PHP_METHOD(SSDB, qsize) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qsize", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qsize"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2535,7 +2538,7 @@ PHP_METHOD(SSDB, qlist) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -2545,7 +2548,7 @@ PHP_METHOD(SSDB, qlist) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qlist", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qlist"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -2578,7 +2581,7 @@ PHP_METHOD(SSDB, qrlist) {
 	}
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -2588,7 +2591,7 @@ PHP_METHOD(SSDB, qrlist) {
 		key_stop_free = ssdb_key_prefix(ssdb_sock, &key_stop, &key_stop_len);
 	}
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qrlist", key_start, key_stop, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qrlist"), key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
 
 	efree(limit_str);
 	if (key_start_free) efree(key_start);
@@ -2618,7 +2621,7 @@ PHP_METHOD(SSDB, qclear) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qclear", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qclear"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2646,7 +2649,7 @@ PHP_METHOD(SSDB, qfront) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qfront", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qfront"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2674,7 +2677,7 @@ PHP_METHOD(SSDB, qback) {
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qback", key, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qback"), key, key_len, NULL);
 
 	if (key_free) efree(key);
 	if (0 == cmd_len) RETURN_NULL();
@@ -2704,10 +2707,10 @@ PHP_METHOD(SSDB, qget) {
 	}
 
 	char *offset_str = NULL;
-	spprintf(&offset_str, 0, "%ld", offset);
+	int offset_str_len = spprintf(&offset_str, 0, "%ld", offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qget", key, offset_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qget"), key, key_len, offset_str, offset_str_len, NULL);
 
 	efree(offset_str);
 	if (key_free) efree(key);
@@ -2740,12 +2743,12 @@ PHP_METHOD(SSDB, qset) {
 	}
 
 	char *offset_index_str = NULL;
-	spprintf(&offset_index_str, 0, "%ld", offset_index);
+	int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qset", key, offset_index_str, value, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qset"), key, key_len, offset_index_str, offset_index_str_len, value, value_len, NULL);
 
 	efree(offset_index_str);
 	if (key_free) efree(key);
@@ -2779,13 +2782,13 @@ PHP_METHOD(SSDB, qrange) {
 	}
 
 	char *start_offset_str = NULL;
-	spprintf(&start_offset_str, 0, "%ld", start_offset);
+	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *limit_str = NULL;
-	spprintf(&limit_str, 0, "%ld", limit);
+	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qrange", key, start_offset_str, limit_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qrange"), key, key_len, start_offset_str, start_offset_str_len, limit_str, limit_str_len, NULL);
 
 	efree(start_offset_str);
 	efree(limit_str);
@@ -2818,13 +2821,13 @@ PHP_METHOD(SSDB, qslice) {
 	}
 
 	char *start_offset_str = NULL;
-	spprintf(&start_offset_str, 0, "%ld", start_offset);
+	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *end_offset_str = NULL;
-	spprintf(&end_offset_str, 0, "%ld", end_offset);
+	int end_offset_str_len = spprintf(&end_offset_str, 0, "%ld", end_offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qslice", key, start_offset_str, end_offset_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qslice"), key, key_len, start_offset_str, start_offset_str_len, end_offset_str, end_offset_str_len, NULL);
 
 	efree(start_offset_str);
 	efree(end_offset_str);
@@ -2872,10 +2875,10 @@ PHP_METHOD(SSDB, qpush) {
 
 	if (IS_ARRAY != Z_TYPE_P(z_value)) {
 		value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpush", key, value, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpush"), key, key_len, value, value_len, NULL);
 		if (value_free) STR_FREE(value);
 	}  else {
-		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "qpush", 5, key, key_len, z_value, 0, 0, 1);
+		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("qpush"), key, key_len, z_value, 0, 0, 1);
 	}
 
 	if (key_free) efree(key);
@@ -2922,10 +2925,10 @@ PHP_METHOD(SSDB, qpush_front) {
 
 	if (IS_ARRAY != Z_TYPE_P(z_value)) {
 		value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpush_front", key, value, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpush_front"), key, key_len, value, value_len, NULL);
 		if (value_free) STR_FREE(value);
 	}  else {
-		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "qpush_front", 11, key, key_len, z_value, 0, 0, 1);
+		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("qpush_front"), key, key_len, z_value, 0, 0, 1);
 	}
 
 	if (key_free) efree(key);
@@ -2972,10 +2975,10 @@ PHP_METHOD(SSDB, qpush_back) {
 
 	if (IS_ARRAY != Z_TYPE_P(z_value)) {
 		value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpush_back", key, value, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpush_back"), key, key_len, value, value_len, NULL);
 		if (value_free) STR_FREE(value);
 	}  else {
-		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, "qpush_back", 10, key, key_len, z_value, 0, 0, 1);
+		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("qpush_back"), key, key_len, z_value, 0, 0, 1);
 	}
 
 	if (key_free) efree(key);
@@ -3010,13 +3013,13 @@ PHP_METHOD(SSDB, qpop) {
 
 	if (size) {
 		char *size_str = NULL;
-		spprintf(&size_str, 0, "%ld", size);
+		int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpop", key, size_str, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop"), key, key_len, size_str, size_str_len, NULL);
 
 		efree(size_str);
 	} else {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpop", key, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop"), key, key_len, NULL);
 	}
 
 	if (key_free) efree(key);
@@ -3055,13 +3058,13 @@ PHP_METHOD(SSDB, qpop_front) {
 
 	if (size) {
 		char *size_str = NULL;
-		spprintf(&size_str, 0, "%ld", size);
+		int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpop_front", key, size_str, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop_front"), key, key_len, size_str, size_str_len, NULL);
 
 		efree(size_str);
 	} else {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpop_front", key, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop_front"), key, key_len, NULL);
 	}
 
 	if (key_free) efree(key);
@@ -3100,13 +3103,13 @@ PHP_METHOD(SSDB, qpop_back) {
 
 	if (size) {
 		char *size_str = NULL;
-		spprintf(&size_str, 0, "%ld", size);
+		int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpop_back", key, size_str, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop_back"), key, key_len, size_str, size_str_len, NULL);
 
 		efree(size_str);
 	} else {
-		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qpop_back", key, NULL);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop_back"), key, key_len, NULL);
 	}
 
 	if (key_free) efree(key);
@@ -3144,9 +3147,9 @@ PHP_METHOD(SSDB, qtrim_front) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	spprintf(&size_str, 0, "%ld", size);
+	int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qtrim_front", key, size_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qtrim_front"), key, key_len, size_str, size_str_len, NULL);
 
 	efree(size_str);
 	if (key_free) efree(key);
@@ -3180,9 +3183,9 @@ PHP_METHOD(SSDB, qtrim_back) {
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	spprintf(&size_str, 0, "%ld", size);
+	int size_str_len = spprintf(&size_str, 0, "%ld", size);
 
-	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "qtrim_back", key, size_str, NULL);
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qtrim_back"), key, key_len, size_str, size_str_len, NULL);
 
 	efree(size_str);
 	if (key_free) efree(key);

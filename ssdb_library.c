@@ -224,26 +224,29 @@ int ssdb_key_prefix(SSDBSock *ssdb_sock, char **key, int *key_len) {
 	return 1;
 }
 
-int ssdb_cmd_format_by_str(SSDBSock *ssdb_sock, char **ret, char *params, ...) {
+int ssdb_cmd_format_by_str(SSDBSock *ssdb_sock, char **ret, void *params, ...) {
     smart_str buf = {0};
-
-	smart_str_append_long(&buf, strlen(params));
-	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
-	smart_str_appendl(&buf, params, strlen(params));
-	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+    char *var = (char*)params;
+    int var_len = 0;
+    int i = 0;
 
     va_list ap;
 	va_start(ap, params);
 
-	char *var = NULL;
 	while (1) {
-		var = va_arg(ap, char*);
-		if (var == NULL) break;
-		smart_str_append_long(&buf, strlen(var));
-		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
-		smart_str_appendl(&buf, var, strlen(var));
-		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+		if (0 == i % 2) {
+			var_len = va_arg(ap, int);
+			smart_str_append_long(&buf, var_len);
+			smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+			smart_str_appendl(&buf, var, var_len);
+			smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
+		} else {
+			var = va_arg(ap, char*);
+			if (var == NULL) break;
+		}
+		i++;
 	}
+
 	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
 	smart_str_0(&buf);
 	va_end(ap);
@@ -611,7 +614,7 @@ int resend_auth(SSDBSock *ssdb_sock) {
     char *cmd;
     int cmd_len;
 
-    cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, "auth", ssdb_sock->auth, strlen(ssdb_sock->auth));
+    cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("auth"), ssdb_sock->auth, strlen(ssdb_sock->auth), NULL);
     if (ssdb_sock_write(ssdb_sock, cmd, cmd_len TSRMLS_CC) < 0) {
         efree(cmd);
         return -1;
