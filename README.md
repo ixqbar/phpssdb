@@ -10,7 +10,8 @@
    * [auth](#auth)
    * [version](#version)
 2. [string]
-   * [set/setx](#set)
+   * [set](#set)
+   * [setx](#set)
    * [get](#get)
    * [setnx](#setnx)
    * [expire](#expire)
@@ -26,8 +27,8 @@
    * [substr](#substr)
    * [strlen](#strlen)
    * [keys](#keys)
-   * [scan](#scan/rscan)
-   * [rscan](#scan/rscan)
+   * [scan](#scan-rscan)
+   * [rscan](#scan-rscan)
    * [multi_set](#multi_set)
    * [multi_get](#multi_get)
    * [multi_del](#multi_del)
@@ -38,13 +39,13 @@
 	* [hincr](#hincr)
 	* [hexists](#hexists)
 	* [hsize](#hsize)
-	* [hlist](#hlist/hrlist)
-	* [hrlist](#hlist/hrlist)
+	* [hlist](#hlist-hrlist)
+	* [hrlist](#hlist-hrlist)
 	* [hkeys](#hkeys)
 	* [hsize](#hsize)
 	* [hgetall](#hgetall)
-	* [hscan](#hscan/hrscan)
-	* [hrscan](#hscan/hrscan)
+	* [hscan](#hscan-hrscan)
+	* [hrscan](#hscan-hrscan)
 	* [hclear](#hclear)
 	* [multi_hset](#multi_hset)
 	* [multi_hget](#multi_hget)
@@ -56,15 +57,15 @@
    * [zincr](#zincr)
    * [zexists](#zexists)
    * [zsize](#zsize)
-   * [zlist](#zlist/zrlist)
-   * [zrlist](#zlist/zrlist)
+   * [zlist](#zlist-zrlist)
+   * [zrlist](#zlist-zrlist)
    * [zkeys](#zkeys)
-   * [zscan](#zscan/zrscan)
-   * [zrscan](#zscan/zrscan)
-   * [zrank](#zrank/zrrank)
-   * [zrrank](#zrank/zrrank)
-   * [zrange](#zrange/zrrange)
-   * [zrrange](#zrange/zrrange)
+   * [zscan](#zscan-zrscan)
+   * [zrscan](#zscan-zrscan)
+   * [zrank](#zrank-zrrank)
+   * [zrrank](#zrank-zrrank)
+   * [zrange](#zrange-zrrange)
+   * [zrrange](#zrange-zrrange)
    * [zclear](#zclear)
    * [zcount](#zcount)
    * [zsum](#zsum)
@@ -78,8 +79,8 @@
    * [zpop_back](#zpop_back)
 5. [list]  
 	* [qsize](#qsize)
-	* [qlist](#qlist/qrlist)
-	* [qrlist](#qlist/qrlist)
+	* [qlist](#qlist-qrlist)
+	* [qrlist](#qlist-qrlist)
 	* [qclear](#qclear)
 	* [qfront](#qfront)
 	* [qback](#qback)
@@ -87,10 +88,10 @@
 	* [qset](#qset)
 	* [qrange](#qrange)
 	* [qslice](#qslice)
-	* [qpush](#qpush/qpush_back)
+	* [qpush](#qpush-qpush_back)
 	* [qpush_front](#qpush_front)
 	* [qpush_back](#qpush_back)
-	* [qpop](#qpop/qpop_back)
+	* [qpop](#qpop-qpop_back)
 	* [qpop_front](#qpop_front)
 	* [qpop_back](#qpop_back)
 	* [qtrim_front](#qtrim_front)
@@ -347,7 +348,7 @@ $ssdb_handle->keys('', '', 100);
 ```
 * 返回(key_start_name, key_end_name]的key数组
 
-#scan/rscan
+#scan rscan
 #####params#####
 *key_start_name* 可传递空 -inf
 
@@ -450,7 +451,7 @@ long
 $ssdb_handle->zget('login'); //1
 ```
 
-#zlist/zrlist
+#zlist zrlist
 #####params#####
 *key_start_name* 可传递空 -inf
 
@@ -497,7 +498,7 @@ $ssdb_handle->zkeys('login', '', 0, 100, 100);
 * 如果member_start_name不为空, 那么对应权重值大于member_start_score的key, 或者大于member_start_score且对应权重值等于member_start_score的key将被返回.
 * 更多可以参考ssdb-server官网[http://ssdb.io/docs/zh_cn/php/index.html中zcan](http://ssdb.io/docs/zh_cn/php/index.html)的解释
 
-#zscan/zrscan
+#zscan zrscan
 #####params#####
 *key*
 
@@ -516,7 +517,7 @@ $ssdb_handle->zrscan('login', '', 0, 100, 100);
 ```
 * 更多可以参考ssdb-server官网[http://ssdb.io/docs/zh_cn/php/index.html中zcan](http://ssdb.io/docs/zh_cn/php/index.html)的解释
 
-#zrank/zrrank
+#zrank zrrank
 #####params#####
 *key*
 
@@ -529,7 +530,7 @@ $ssdb_handle->zrrank('login', 'zhangsan'); //0
 $ssdb_handle->zrank('login', 'none');//NULL
 ```
 
-#zrange/zrrange
+#zrange zrrange
 #####params#####
 *key*
 
@@ -743,7 +744,7 @@ long
 $ssdb_handle->hexists('news');//1
 ```
 
-#hlist/hrlist
+#hlist hrlist
 #####params#####
 *key_start_name* 可传递空 -inf
 
@@ -792,7 +793,7 @@ long
 $ssdb_handle->hclear('news');
 ```
 
-#hscan/hrscan
+#hscan hrscan
 #####params#####
 *hash_key*
 
@@ -846,7 +847,7 @@ long
 $ssdb_handle->qsize('queue');//0
 ```
 
-#qlist/qrlist
+#qlist qrlist
 #####params#####
 *key*
 
@@ -872,7 +873,7 @@ long
 $ssdb_handle->qclear('queue');//0
 ```
 
-#qpush/qpush_back
+#qpush qpush_back
 #####params#####
 *key*
 
@@ -900,7 +901,7 @@ $ssdb_handle->qpush_front('queue', array('lisi', 'wangwu'));
 ```
 * 往队列的尾部添加一个或者多个元素
 
-#qpop/qpop_back
+#qpop qpop_back
 #####params#####
 *key*
 
