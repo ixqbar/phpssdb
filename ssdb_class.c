@@ -442,8 +442,8 @@ PHP_METHOD(SSDB, countbit) {
 		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("countbit"), key, key_len, NULL);
 	} else if (2 == num_args) {
 		char *offset_index_str = NULL;
-		spprintf(&offset_index_str, 0, "%ld", offset_index);
-		int offset_index_str_len = cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("countbit"), key, key_len, offset_index_str, offset_index_str_len, NULL);
+		int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
+		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("countbit"), key, key_len, offset_index_str, offset_index_str_len, NULL);
 		efree(offset_index_str);
 	} else {
 		char *offset_index_str = NULL;
