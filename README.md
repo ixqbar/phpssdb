@@ -8,6 +8,7 @@
    * [connect](#connect)
    * [option](#option)
    * [auth](#auth)
+   * [ping](#ping)
    * [version](#version)
    * [dbsize](#dbsize)
    * [request](#request)
@@ -132,7 +133,7 @@ $ssdb_handle->get('ssdb_version');
 
 *retry_interval*  重连间隔 单位毫秒
 #####return#####
-成功true 失败false
+bool
 ```
 $ssdb_handle->connect("127.0.0.1", 8888);
 ```
@@ -151,7 +152,7 @@ SSDB::SERIALIZER_IGBINARY(需要编译开启)三种模式，默认无
 
 *option_value* 
 #####return#####
-成功true,失败false
+bool
 ```
 $ssdb_handle->option(SSDB::OPT_READ_TIMEOUT, 15); //设置读取超时时间，单位秒
 $ssdb_handle->option(SSDB::OPT_PREFIX, 'test_'); //设置key前缀
@@ -163,9 +164,18 @@ $ssdb_handle->option(SSDB::OPT_SERIALIZER, SSDB::SERIALIZER_PHP);
 #####params####
 *password*
 #####return####
-成功true,失败false
+bool
 ```
 $ssdb_handle->auth('your_auth_password');
+```
+
+#ping
+#####params####
+*void*
+#####return####
+bool
+```
+$ssdb_handle->ping();
 ```
 
 #version
@@ -333,7 +343,7 @@ $ssdb_handle->getbit('onlinue_num', 0);//1
 #####params#####
 *key*
 
-*start*
+*start* 可选
 
 *size* 可选
 #####return#####

@@ -26,6 +26,7 @@
 PHP_METHOD(SSDB, __construct);
 PHP_METHOD(SSDB, connect);
 PHP_METHOD(SSDB, auth);
+PHP_METHOD(SSDB, ping);
 PHP_METHOD(SSDB, option);
 PHP_METHOD(SSDB, version);
 PHP_METHOD(SSDB, dbsize);

@@ -289,6 +289,30 @@ PHP_METHOD(SSDB, auth) {
 	ssdb_bool_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
 }
 
+PHP_METHOD(SSDB, ping) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *cmd = NULL;
+	int cmd_len = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O",
+			&object, ssdb_ce) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("ping"), NULL);
+
+	if (0 == cmd_len) RETURN_NULL();
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
+
+	ssdb_bool_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
+}
+
 //ssdb-server >= 1.9.0
 PHP_METHOD(SSDB, version) {
 	zval *object;
@@ -3267,6 +3291,7 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, option,      NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, connect,     NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, auth,        NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, ping,        NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, version,     NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, dbsize,      NULL, ZEND_ACC_PUBLIC)
 	//command
