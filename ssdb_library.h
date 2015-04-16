@@ -52,9 +52,9 @@ typedef enum {SSDB_IS_DEFAULT,SSDB_IS_OK,SSDB_IS_NOT_FOUND,SSDB_IS_ERROR,SSDB_IS
 typedef struct {
 	php_stream *stream;
 	char *host;
-	short port;
-	double timeout;
-	double read_timeout;
+	long port;
+	long timeout;
+	long read_timeout;
 	char *auth;
 	char *prefix;
 	int prefix_len;
@@ -62,7 +62,7 @@ typedef struct {
 	zend_bool lazy_connect;
 	char *err;
 	int err_len;
-	long retry_interval;
+	int retry_interval;
 	int persistent;
 	char *persistent_id;
 	int serializer;
@@ -87,8 +87,8 @@ extern zend_class_entry *ssdb_exception_ce;
 SSDBSock* ssdb_create_sock(
 		char *host,
 		int host_len,
-		unsigned short port,
-		double timeout,
+		long port,
+		long timeout,
 		int persistent,
 		char *persistent_id,
         long retry_interval,

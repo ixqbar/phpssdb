@@ -77,7 +77,7 @@ PHP_SSDB_API int ssdb_sock_get(zval *id, SSDBSock **ssdb_sock TSRMLS_DC, int no_
 
     if ((*ssdb_sock)->lazy_connect) {
         (*ssdb_sock)->lazy_connect = 0;
-        if (ssdb_open_socket(*ssdb_sock, 1 TSRMLS_CC) < 0) {
+        if (ssdb_open_socket(*ssdb_sock, 1) < 0) {
             return -1;
         }
     }
@@ -87,22 +87,19 @@ PHP_SSDB_API int ssdb_sock_get(zval *id, SSDBSock **ssdb_sock TSRMLS_DC, int no_
 
 //连接
 PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
+	SSDBSock *ssdb_sock  = NULL;
 	zval *object;
 	zval **socket;
-	int host_len;
-	int id;
-	char *host = NULL;
-	long port = -1;
-	double timeout = 0.0;
-	SSDBSock *ssdb_sock  = NULL;
-	char *persistent_id = NULL;
-	int persistent_id_len = -1;
-	long retry_interval = 0;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|ldsl",
+	char *host = NULL, *persistent_id = NULL;
+	int host_len = 0, persistent_id_len = 0, id;
+	long port = 0, timeout = 0, retry_interval = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|llsl",
 			&object, ssdb_ce,
 			&host, &host_len,
-			&port, &timeout,
+			&port,
+			&timeout,
 			&persistent_id, &persistent_id_len,
 			&retry_interval) == FAILURE) {
 		return FAILURE;
@@ -190,7 +187,7 @@ PHP_METHOD(SSDB, option) {
 			RETVAL_TRUE;
 			break;
 		case SSDB_OPT_READ_TIMEOUT:
-			ssdb_sock->read_timeout = atof(val_str);
+			ssdb_sock->read_timeout = atol(val_str);
 			if (ssdb_sock->stream) {
 				read_tv.tv_sec  = (time_t)ssdb_sock->read_timeout;
 				read_tv.tv_usec = (int)((ssdb_sock->read_timeout - read_tv.tv_sec) * 1000000);
@@ -3381,15 +3378,17 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, qtrim_front, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, qtrim_back,  NULL, ZEND_ACC_PUBLIC)
 	//alias
-	PHP_MALIAS(SSDB, open, connect, NULL, ZEND_ACC_PUBLIC)
-	PHP_MALIAS(SSDB, setx, set,     NULL, ZEND_ACC_PUBLIC)
+	PHP_MALIAS(SSDB, setx, set, NULL, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 
 //注册
 void register_ssdb_class(int module_number TSRMLS_DC) {
-	//异常类
+	//类
 	zend_class_entry ece;
+	zend_class_entry cce;
+
+	//异常类
 	INIT_CLASS_ENTRY(ece, "SSDBException", NULL);
 	ssdb_exception_ce = zend_register_internal_class_ex(
 		&ece,
@@ -3401,7 +3400,6 @@ void register_ssdb_class(int module_number TSRMLS_DC) {
 	zend_declare_property_long(ssdb_exception_ce, ZEND_STRL("code"), 0,	ZEND_ACC_PROTECTED TSRMLS_CC);
 
 	//类
-	zend_class_entry cce;
 	INIT_CLASS_ENTRY(cce, "SSDB", ssdb_class_methods);
 	ssdb_ce = zend_register_internal_class(&cce TSRMLS_CC);
 	le_ssdb_sock = zend_register_list_destructors_ex(ssdb_destructor_socket, NULL, "SSDB Socket Buffer", module_number);
