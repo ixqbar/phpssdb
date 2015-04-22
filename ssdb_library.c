@@ -183,6 +183,8 @@ int ssdb_connect_socket(SSDBSock *ssdb_sock) {
         php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_READ_TIMEOUT, 0, &read_tv);
     }
     php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_WRITE_BUFFER, PHP_STREAM_BUFFER_NONE, NULL);
+    php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_READ_BUFFER, PHP_STREAM_BUFFER_NONE, NULL);
+    php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_BLOCKING, 1, NULL);
 
     ssdb_sock->status = SSDB_SOCK_STATUS_CONNECTED;
 
@@ -474,7 +476,7 @@ void ssdb_response_add_block(SSDBResponse *ssdb_response, char *data, size_t len
 }
 
 SSDBResponse *ssdb_sock_read(SSDBSock *ssdb_sock) {
-    if (-1 == ssdb_check_eof(ssdb_sock TSRMLS_CC)) {
+    if (-1 == ssdb_check_eof(ssdb_sock)) {
         return NULL;
     }
 
@@ -603,7 +605,7 @@ int ssdb_sock_write(SSDBSock *ssdb_sock, char *cmd, size_t sz) {
 		return -1;
 	}
 
-    if (-1 == ssdb_check_eof(ssdb_sock TSRMLS_CC)) {
+    if (-1 == ssdb_check_eof(ssdb_sock)) {
         return -1;
     }
 

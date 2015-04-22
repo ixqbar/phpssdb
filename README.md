@@ -439,7 +439,7 @@ $ssdb_handle->zdel('login', 'zhangsan');
 
 *member*
 
-*score*
+*score* ssdb仅支持整数
 #####return#####
 bool
 ```
@@ -1036,6 +1036,9 @@ $ssdb_handle->qtrim_back('queue', 2);
 
 #TODO
 * session
+
+#More features
+[DEV](https://github.com/jonnywang/phpsdb/tree/dev)
 
 #contact
 更多疑问请+qq群 233415606 or [website http://xingqiba.sinaapp.com](http://xingqiba.sinaapp.com)

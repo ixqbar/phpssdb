@@ -3276,6 +3276,75 @@ PHP_METHOD(SSDB, qtrim_back) {
 	ssdb_long_number_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
 }
 
+PHP_METHOD(SSDB, read) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	long buf_len;
+	int read_buf_len = 0, once_read_buf_len = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ol",
+			&object, ssdb_ce,
+			&buf_len) == FAILURE
+			|| buf_len == 0) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0
+			|| -1 == ssdb_check_eof(ssdb_sock)) {
+		RETURN_NULL();
+	}
+
+	if (-1 == ssdb_check_eof(ssdb_sock)) {
+		RETURN_NULL();
+	}
+
+	char *buf = emalloc(sizeof (char *) * (buf_len + 1));
+
+	while (1) {
+		if (buf_len <= 0
+				|| 1 == php_stream_eof(ssdb_sock->stream)) {
+			break;
+		}
+
+		once_read_buf_len = php_stream_read(ssdb_sock->stream, buf + read_buf_len, buf_len);
+		if (0 == once_read_buf_len) {
+			break;
+		}
+
+		buf_len -= once_read_buf_len;
+		read_buf_len += once_read_buf_len;
+	}
+
+	buf[read_buf_len] = '\0';
+
+	RETVAL_STRINGL(buf, read_buf_len, 1);
+	efree(buf);
+}
+
+PHP_METHOD(SSDB, write) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *buf = NULL;
+	int buf_len = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
+			&object, ssdb_ce,
+			&buf, &buf_len) == FAILURE
+			|| buf_len == 0) {
+		RETURN_FALSE;
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_FALSE;
+	}
+
+	if (ssdb_sock_write(ssdb_sock, buf, buf_len) != buf_len) {
+		RETURN_FALSE;
+	}
+
+	RETURN_TRUE;
+}
+
 static void ssdb_destructor_socket(zend_rsrc_list_entry * rsrc TSRMLS_DC) {
 	SSDBSock *ssdb_sock = (SSDBSock *) rsrc->ptr;
 	ssdb_disconnect_socket(ssdb_sock);
@@ -3379,6 +3448,9 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, qtrim_back,  NULL, ZEND_ACC_PUBLIC)
 	//alias
 	PHP_MALIAS(SSDB, setx, set, NULL, ZEND_ACC_PUBLIC)
+	//socket
+	PHP_ME(SSDB, read,  NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, write, NULL, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 

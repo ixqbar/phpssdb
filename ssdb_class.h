@@ -116,6 +116,9 @@ PHP_METHOD(SSDB, qpop_front);
 PHP_METHOD(SSDB, qpop_back);
 PHP_METHOD(SSDB, qtrim_front);
 PHP_METHOD(SSDB, qtrim_back);
+//socket
+PHP_METHOD(SSDB, read);
+PHP_METHOD(SSDB, write);
 
 void register_ssdb_class(int module_number TSRMLS_DC);
 
