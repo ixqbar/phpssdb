@@ -1,4 +1,7 @@
 
+#More features
+[DEV](https://github.com/jonnywang/phpssdb/tree/dev)
+
 #目录
 
 -----
@@ -12,6 +15,7 @@
    * [version](#version)
    * [dbsize](#dbsize)
    * [request](#request)
+   * [read/write](#read-write)
 2. [string]
    * [set](#set)
    * [setx](#set)
@@ -204,6 +208,15 @@ array
 ```
 $ssdb_handle->request('multi_hset', 'info', 'name', 'xingqiba', 'version', '1.0.0'); //array(2)
 $ssdb_handle->request('hgetall', 'info'); //array('name', 'xingqiba', 'version', '1.0.0')
+```
+
+#read write
+```
+$writed_len = $socket_handle->write("7\nversion\n\n"); //发送指定字符串，返回发送长度
+var_dump($writed_len);
+
+$read_buf = $socket_handle->read(100); //读取指定长度字符串，默认阻塞直到默认超时30， 超时设置请参考option
+var_dump($read_buf);
 ```
 
 #set
@@ -1036,9 +1049,6 @@ $ssdb_handle->qtrim_back('queue', 2);
 
 #TODO
 * session
-
-#More features
-[DEV](https://github.com/jonnywang/phpsdb/tree/dev)
 
 #contact
 更多疑问请+qq群 233415606 or [website http://xingqiba.sinaapp.com](http://xingqiba.sinaapp.com)
