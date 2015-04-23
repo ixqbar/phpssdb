@@ -212,8 +212,8 @@ $ssdb_handle->request('hgetall', 'info'); //array('name', 'xingqiba', 'version',
 
 #read write
 ```
-$writed_len = $socket_handle->write("7\nversion\n\n"); //发送指定字符串，返回发送长度
-var_dump($writed_len);
+$write_result = $socket_handle->write("7\nversion\n\n"); //发送指定字符串，返回bool or NULL
+var_dump($write_result);
 
 $read_buf = $socket_handle->read(100); //读取指定长度字符串，默认阻塞直到默认超时30， 超时设置请参考option
 var_dump($read_buf);
