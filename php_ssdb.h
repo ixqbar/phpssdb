@@ -24,7 +24,7 @@
 extern zend_module_entry ssdb_module_entry;
 #define phpext_ssdb_ptr &ssdb_module_entry
 
-#define PHP_SSDB_VERSION "0.3.0"
+#define PHP_SSDB_VERSION "0.4.0"
 
 #ifdef PHP_WIN32
 #	define PHP_SSDB_API __declspec(dllexport)
@@ -45,6 +45,7 @@ PHP_RSHUTDOWN_FUNCTION(ssdb);
 PHP_MINFO_FUNCTION(ssdb);
 
 PHP_FUNCTION(ssdb_version);
+PHP_FUNCTION(ssdb_geo_distance);
 
 /* 
   	Declare any global variables you may need between the BEGIN

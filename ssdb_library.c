@@ -866,6 +866,7 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
     		|| ssdb_response->status != SSDB_IS_OK
 			|| ssdb_response->num % 2 != 0) {
     	ssdb_response_free(ssdb_response);
+    	php_printf("error\n");
         RETURN_NULL();
     }
 

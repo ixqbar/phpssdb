@@ -119,6 +119,11 @@ PHP_METHOD(SSDB, qtrim_back);
 //socket
 PHP_METHOD(SSDB, read);
 PHP_METHOD(SSDB, write);
+//geo
+PHP_METHOD(SSDB, geo_set);
+PHP_METHOD(SSDB, geo_get);
+PHP_METHOD(SSDB, geo_neighbour);
+PHP_METHOD(SSDB, geo_distance);
 
 void register_ssdb_class(int module_number TSRMLS_DC);
 
