@@ -354,8 +354,8 @@ bool ssdb_geo_get(
 	}
 
 	array_init(return_value);
-	add_assoc_double_ex(return_value, ZEND_STRL("latitude"),  latlong[0]);
-	add_assoc_double_ex(return_value, ZEND_STRL("longitude"), latlong[1]);
+	add_assoc_double_ex(return_value, ZEND_STRS("latitude"),  latlong[0]);
+	add_assoc_double_ex(return_value, ZEND_STRS("longitude"), latlong[1]);
 
 	return true;
 }
@@ -411,9 +411,9 @@ bool ssdb_geo_neighbours(
 	for (i = 0; i < l->num; i++) {
 		MAKE_STD_ZVAL(temp);
 		array_init_size(temp, 3);
-		add_assoc_double_ex(temp, ZEND_STRL("latitude"),  p_l[i].latitude);
-		add_assoc_double_ex(temp, ZEND_STRL("longitude"), p_l[i].longitude);
-		add_assoc_double_ex(temp, ZEND_STRL("distance"),  p_l[i].dist);
+		add_assoc_double_ex(temp, ZEND_STRS("latitude"),  p_l[i].latitude);
+		add_assoc_double_ex(temp, ZEND_STRS("longitude"), p_l[i].longitude);
+		add_assoc_double_ex(temp, ZEND_STRS("distance"),  p_l[i].dist);
 		add_assoc_zval(return_value, p_l[i].member, temp);
 		//
 		efree(p_l[i].member);
