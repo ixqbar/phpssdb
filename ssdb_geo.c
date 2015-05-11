@@ -167,11 +167,12 @@ static SSDBGeoList *ssdb_geo_member_box(SSDBGeoObj *ssdb_geo_obj, GeoHashBits ha
 				break;
 			}
 
-			SSDBGeoPoint *p = malloc(sizeof (SSDBGeoPoint));
-			p->member    = estrndup(ssdb_response_block->prev->data, strlen(ssdb_response_block->prev->data));
-			p->dist      = 0.0;
-			p->latitude  = latlong[0];
-			p->longitude = latlong[1];
+			SSDBGeoPoint *p   = malloc(sizeof (SSDBGeoPoint));
+			p->member_key_len = ssdb_response_block->prev->len;
+			p->member         = estrndup(ssdb_response_block->prev->data, ssdb_response_block->prev->len);
+			p->dist           = 0.0;
+			p->latitude       = latlong[0];
+			p->longitude      = latlong[1];
 
 			ssdb_geo_list_add_tail_node(l, p);
 		}
@@ -228,7 +229,8 @@ static SSDBGeoList *ssdb_geo_members(SSDBGeoObj *ssdb_geo_obj, GeoHashRadius n, 
 			n = n->next;
 
 			double distance;
-			if (0 == strncmp(ssdb_geo_obj->member_key, p->member, ssdb_geo_obj->member_key_len)
+			if ((ssdb_geo_obj->member_key_len == p->member_key_len
+					&& 0 == strncmp(ssdb_geo_obj->member_key, p->member, p->member_key_len))
 					|| !geohashGetDistanceIfInRadiusWGS84(longitude, latitude, p->longitude, p->latitude, radius_meters, &distance)) {
 				//不在范围内删除
 				l->num--;
@@ -366,6 +368,7 @@ bool ssdb_geo_neighbours(
 		char *member_key,
 		int member_key_len,
 		double radius_meters,
+		long limit,
 		INTERNAL_FUNCTION_PARAMETERS) {
 	double latlong[2] = {0};
 	if (!ssdb_geo_member(ssdb_sock, key, key_len, member_key, member_key_len, (double *)latlong)) {
@@ -388,6 +391,8 @@ bool ssdb_geo_neighbours(
 		return false;
 	}
 
+	limit = limit <= 0 ? l->num : limit;
+
 	int i = 0;
 	SSDBGeoPoint *p_l = malloc(sizeof(SSDBGeoPoint) * l->num);
 	SSDBGeoPoint *p;
@@ -409,13 +414,14 @@ bool ssdb_geo_neighbours(
 	zval *temp;
 	array_init(return_value);
 	for (i = 0; i < l->num; i++) {
-		MAKE_STD_ZVAL(temp);
-		array_init_size(temp, 3);
-		add_assoc_double_ex(temp, ZEND_STRS("latitude"),  p_l[i].latitude);
-		add_assoc_double_ex(temp, ZEND_STRS("longitude"), p_l[i].longitude);
-		add_assoc_double_ex(temp, ZEND_STRS("distance"),  p_l[i].dist);
-		add_assoc_zval(return_value, p_l[i].member, temp);
-		//
+		if (i < limit) {
+			MAKE_STD_ZVAL(temp);
+			array_init_size(temp, 3);
+			add_assoc_double_ex(temp, ZEND_STRS("latitude"),  p_l[i].latitude);
+			add_assoc_double_ex(temp, ZEND_STRS("longitude"), p_l[i].longitude);
+			add_assoc_double_ex(temp, ZEND_STRS("distance"),  p_l[i].dist);
+			add_assoc_zval(return_value, p_l[i].member, temp);
+		}
 		efree(p_l[i].member);
 	}
 

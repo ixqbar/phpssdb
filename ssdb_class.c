@@ -3405,12 +3405,14 @@ PHP_METHOD(SSDB, geo_neighbour) {
 	char *key = NULL, *member_key = NULL;
 	int key_len = 0, member_key_len = 0;
 	double radius_meters = 1000;
+	long limit = 0;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss|d",
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss|dl",
 			&object, ssdb_ce,
 			&key, &key_len,
 			&member_key, &member_key_len,
-			&radius_meters) == FAILURE
+			&radius_meters,
+			&limit) == FAILURE
 			|| 0 == key_len
 			|| 0 == member_key_len
 			|| radius_meters <= 0) {
@@ -3421,7 +3423,7 @@ PHP_METHOD(SSDB, geo_neighbour) {
 		RETURN_NULL();
 	}
 
-	if (!ssdb_geo_neighbours(ssdb_sock, key, key_len, member_key, member_key_len, radius_meters, INTERNAL_FUNCTION_PARAM_PASSTHRU)) {
+	if (!ssdb_geo_neighbours(ssdb_sock, key, key_len, member_key, member_key_len, radius_meters, limit, INTERNAL_FUNCTION_PARAM_PASSTHRU)) {
 		RETURN_NULL();
 	}
 }
