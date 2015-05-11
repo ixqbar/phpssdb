@@ -100,6 +100,11 @@ if test "$PHP_SSDB" != "no"; then
   dnl ])
   dnl
   dnl PHP_SUBST(SSDB_SHARED_LIBADD)
-
-  PHP_NEW_EXTENSION(ssdb, ssdb_library.c ssdb_class.c ssdb.c, $ext_shared)
+  
+  PHP_NEW_EXTENSION(ssdb, ssdb_library.c \
+                          ssdb_class.c \
+                          ssdb_geo.c \
+                          geo/geohash.c \
+                          geo/geohash_helper.c \
+                          ssdb.c, $ext_shared)
 fi

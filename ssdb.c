@@ -28,6 +28,7 @@
 #include "php_ssdb.h"
 
 #include "ssdb_class.h"
+#include "geo/geohash_helper.h"
 
 /* If you declare any globals in php_ssdb.h uncomment this:
 ZEND_DECLARE_MODULE_GLOBALS(ssdb)
@@ -39,6 +40,7 @@ ZEND_DECLARE_MODULE_GLOBALS(ssdb)
  */
 const zend_function_entry ssdb_functions[] = {
 	PHP_FE(ssdb_version, NULL)
+	PHP_FE(ssdb_geo_distance, NULL)
 	PHP_FE_END	/* Must be the last line in ssdb_functions[] */
 };
 /* }}} */
@@ -157,6 +159,17 @@ PHP_FUNCTION(ssdb_version)
 }
 /* }}} */
 
+PHP_FUNCTION(ssdb_geo_distance)
+{
+	double latitude1, longitude1, latitude2, longitude2;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dddd",
+			&latitude1, &longitude1,
+			&latitude2, &longitude2) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	RETVAL_DOUBLE(geohashDistanceEarth(latitude1, longitude1, latitude2, longitude2));
+}
 
 /*
  * Local variables:

@@ -33,11 +33,11 @@
 SSDBSock* ssdb_create_sock(
 		char *host,
 		int host_len,
-		unsigned short port,
-		double timeout,
+		long port,
+		long timeout,
 		int persistent,
 		char *persistent_id,
-        long retry_interval,
+		long retry_interval,
 		zend_bool lazy_connect) {
 	SSDBSock *ssdb_sock;
 
@@ -141,13 +141,13 @@ int ssdb_connect_socket(SSDBSock *ssdb_sock) {
     if (ssdb_sock->port == 0) {
 		ssdb_sock->port = 8888;
     }
-	host_len = spprintf(&host, 0, "%s:%d", ssdb_sock->host, ssdb_sock->port);
+	host_len = spprintf(&host, 0, "%s:%ld", ssdb_sock->host, ssdb_sock->port);
 
 	if (ssdb_sock->persistent) {
 		if (ssdb_sock->persistent_id) {
 			spprintf(&persistent_id, 0, "phpssdb:%s:%s", host, ssdb_sock->persistent_id);
 		} else {
-			spprintf(&persistent_id, 0, "phpssdb:%s:%f", host, ssdb_sock->timeout);
+			spprintf(&persistent_id, 0, "phpssdb:%s:%ld", host, ssdb_sock->timeout);
 		}
 	}
 
@@ -183,6 +183,8 @@ int ssdb_connect_socket(SSDBSock *ssdb_sock) {
         php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_READ_TIMEOUT, 0, &read_tv);
     }
     php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_WRITE_BUFFER, PHP_STREAM_BUFFER_NONE, NULL);
+    php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_READ_BUFFER, PHP_STREAM_BUFFER_NONE, NULL);
+    php_stream_set_option(ssdb_sock->stream, PHP_STREAM_OPTION_BLOCKING, 1, NULL);
 
     ssdb_sock->status = SSDB_SOCK_STATUS_CONNECTED;
 
@@ -400,7 +402,7 @@ int ssdb_check_eof(SSDBSock *ssdb_sock) {
     /* We've reconnected if we have a count */
     if (count) {
         /* If we're using a password, attempt a reauthorization */
-        if (ssdb_sock->auth && resend_auth(ssdb_sock TSRMLS_CC) != 0) {
+        if (ssdb_sock->auth && resend_auth(ssdb_sock) != 0) {
             return -1;
         }
     }
@@ -474,7 +476,7 @@ void ssdb_response_add_block(SSDBResponse *ssdb_response, char *data, size_t len
 }
 
 SSDBResponse *ssdb_sock_read(SSDBSock *ssdb_sock) {
-    if (-1 == ssdb_check_eof(ssdb_sock TSRMLS_CC)) {
+    if (-1 == ssdb_check_eof(ssdb_sock)) {
         return NULL;
     }
 
@@ -603,7 +605,7 @@ int ssdb_sock_write(SSDBSock *ssdb_sock, char *cmd, size_t sz) {
 		return -1;
 	}
 
-    if (-1 == ssdb_check_eof(ssdb_sock TSRMLS_CC)) {
+    if (-1 == ssdb_check_eof(ssdb_sock)) {
         return -1;
     }
 
@@ -864,6 +866,7 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
     		|| ssdb_response->status != SSDB_IS_OK
 			|| ssdb_response->num % 2 != 0) {
     	ssdb_response_free(ssdb_response);
+    	php_printf("error\n");
         RETURN_NULL();
     }
 
