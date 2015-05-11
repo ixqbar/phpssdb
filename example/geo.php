@@ -17,6 +17,13 @@ echo $result . PHP_EOL;
 $result = $ssdb_handle->geo_get('geo_test', 'b');
 print_r($result);
 
+//临沂五村
+$result = $ssdb_handle->geo_set('geo_test', 'bb', 31.196456, 121.515778);
+echo $result . PHP_EOL;
+
+$result = $ssdb_handle->geo_get('geo_test', 'bb');
+print_r($result);
+
 //临沂六村
 $result = $ssdb_handle->geo_set('geo_test', 'c', 31.197159, 121.518015);
 echo $result . PHP_EOL;

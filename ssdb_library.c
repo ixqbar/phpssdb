@@ -630,7 +630,7 @@ int resend_auth(SSDBSock *ssdb_sock) {
 		return -1;
 	}
 
-    if (strncmp(ssdb_response->block->data, "ok", 2)) {
+    if (0 != strcmp(ssdb_response->block->data, "ok")) {
     	ssdb_response_free(ssdb_response);
         return -1;
     }

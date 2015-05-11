@@ -29,6 +29,7 @@ typedef struct {
     double longitude;
     double dist;
     char *member;
+    int member_key_len;
 } SSDBGeoPoint;
 
 typedef struct {
