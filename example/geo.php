@@ -52,6 +52,9 @@ echo $result . PHP_EOL;
 $result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000);
 print_r($result);
 
+$result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000, 3);
+print_r($result);
+
 $result = $ssdb_handle->geo_distance('geo_test', 'b', 'e');
 echo $result . PHP_EOL;
 

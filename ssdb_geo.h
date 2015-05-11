@@ -65,6 +65,7 @@ bool ssdb_geo_neighbours(
 		char *member_key,
 		int member_key_len,
 		double radius_meters,
+		long limit,
 		INTERNAL_FUNCTION_PARAMETERS);
 
 bool ssdb_geo_distance(
