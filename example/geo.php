@@ -38,7 +38,11 @@ echo $result . PHP_EOL;
 $result = $ssdb_handle->geo_get('geo_test', 'e');
 print_r($result);
 
-$result = $ssdb_handle->geo_neighbour('geo_test', 'b', 5000);
+//company
+$result = $ssdb_handle->geo_set('geo_test', 'f', 31.211745, 121.485553);
+echo $result . PHP_EOL;
+
+$result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000);
 print_r($result);
 
 $result = $ssdb_handle->geo_distance('geo_test', 'b', 'e');
