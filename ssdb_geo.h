@@ -38,6 +38,8 @@ typedef struct {
 	int key_len;
 	char *member_key;
 	int member_key_len;
+	char *limit_str;
+	int limit_str_len;
 } SSDBGeoObj;
 
 bool ssdb_geo_set(

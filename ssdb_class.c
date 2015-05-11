@@ -213,6 +213,9 @@ PHP_METHOD(SSDB, option) {
 				RETVAL_FALSE;
 			}
 			break;
+		case SSDB_OPT_GEO_ZSCAN_LIMIT:
+			ssdb_sock->geo_zscan_limit = atol(val_str);
+			break;
 		default:
 			RETVAL_FALSE;
 	}
@@ -3591,10 +3594,11 @@ void register_ssdb_class(int module_number TSRMLS_DC) {
 	ssdb_ce = zend_register_internal_class(&cce TSRMLS_CC);
 	le_ssdb_sock = zend_register_list_destructors_ex(ssdb_destructor_socket, NULL, "SSDB Socket Buffer", module_number);
 
-	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_PREFIX"),       SSDB_OPT_PREFIX TSRMLS_CC);
-	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_READ_TIMEOUT"), SSDB_OPT_READ_TIMEOUT TSRMLS_CC);
-	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_SERIALIZER"),   SSDB_OPT_SERIALIZER TSRMLS_CC);
-	zend_declare_class_constant_stringl(ssdb_ce, ZEND_STRL("VERSION"),          ZEND_STRL(PHP_SSDB_VERSION) TSRMLS_CC);
+	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_PREFIX"),          SSDB_OPT_PREFIX TSRMLS_CC);
+	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_READ_TIMEOUT"),    SSDB_OPT_READ_TIMEOUT TSRMLS_CC);
+	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_SERIALIZER"),      SSDB_OPT_SERIALIZER TSRMLS_CC);
+	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("OPT_GEO_ZSCAN_LIMIT"), SSDB_OPT_GEO_ZSCAN_LIMIT TSRMLS_CC);
+	zend_declare_class_constant_stringl(ssdb_ce, ZEND_STRL("VERSION"),             ZEND_STRL(PHP_SSDB_VERSION) TSRMLS_CC);
 
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_NONE"),     SSDB_SERIALIZER_NONE TSRMLS_CC);
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_PHP"),      SSDB_SERIALIZER_PHP TSRMLS_CC);
