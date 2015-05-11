@@ -89,12 +89,13 @@ static void ssdb_geo_list_join(SSDBGeoList *join_to, SSDBGeoList *join) {
 
 static int ssdb_geo_point_sort_asc(const void *a, const void *b) {
     const SSDBGeoPoint *gpa = a, *gpb = b;
-    if (gpa->dist > gpb->dist)
+    if (gpa->dist > gpb->dist) {
         return 1;
-    else if (gpa->dist == gpb->dist)
-        return 0;
-    else
+    } else if (gpa->dist == gpb->dist) {
+    	return strcmp(gpa->member, gpb->member);
+	} else {
         return -1;
+	}
 }
 
 static SSDBGeoList *ssdb_geo_member_box(SSDBGeoObj *ssdb_geo_obj, GeoHashBits hash) {
@@ -124,8 +125,8 @@ static SSDBGeoList *ssdb_geo_member_box(SSDBGeoObj *ssdb_geo_obj, GeoHashBits ha
 			score_start_len,
 			score_end,
 			score_end_len,
-			"-1",
-			2,
+			ssdb_geo_obj->limit_str,
+			ssdb_geo_obj->limit_str_len,
 			NULL);
 
 	efree(score_start);
@@ -228,10 +229,9 @@ static SSDBGeoList *ssdb_geo_members(SSDBGeoObj *ssdb_geo_obj, GeoHashRadius n, 
 			p = (SSDBGeoPoint *)c->data;
 			n = n->next;
 
-			double distance;
 			if ((ssdb_geo_obj->member_key_len == p->member_key_len
 					&& 0 == strncmp(ssdb_geo_obj->member_key, p->member, p->member_key_len))
-					|| !geohashGetDistanceIfInRadiusWGS84(longitude, latitude, p->longitude, p->latitude, radius_meters, &distance)) {
+					|| !geohashGetDistanceIfInRadiusWGS84(longitude, latitude, p->longitude, p->latitude, radius_meters, &p->dist)) {
 				//不在范围内删除
 				l->num--;
 				//说明当前为head
@@ -249,8 +249,6 @@ static SSDBGeoList *ssdb_geo_members(SSDBGeoObj *ssdb_geo_obj, GeoHashRadius n, 
 				efree(p->member);
 				free(p);
 				free(c);
-			} else {
-				p->dist = distance;
 			}
 		}
 	}
@@ -382,10 +380,13 @@ bool ssdb_geo_neighbours(
 	ssdb_geo_obj->key_len        = key_len;
 	ssdb_geo_obj->member_key     = member_key;
 	ssdb_geo_obj->member_key_len = member_key_len;
+	ssdb_geo_obj->limit_str      = NULL;
+	ssdb_geo_obj->limit_str_len  = spprintf(&ssdb_geo_obj->limit_str, 0, "%ld", ssdb_sock->geo_zscan_limit);
 
 	GeoHashRadius georadius = geohashGetAreasByRadiusWGS84(latlong[0], latlong[1], radius_meters);
 	SSDBGeoList *l = ssdb_geo_members(ssdb_geo_obj, georadius, latlong[0], latlong[1], radius_meters);
 
+	efree(ssdb_geo_obj->limit_str);
 	efree(ssdb_geo_obj);
 	if (l == NULL) {
 		return false;

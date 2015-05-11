@@ -66,6 +66,7 @@ typedef struct {
 	int persistent;
 	char *persistent_id;
 	int serializer;
+	long geo_zscan_limit;
 } SSDBSock;
 
 typedef struct _SSDBResponseBlock {
