@@ -19,10 +19,9 @@
 #ifndef EXT_SSDB_SSDB_CLASS_H_
 #define EXT_SSDB_SSDB_CLASS_H_
 
-#define SSDB_OPT_PREFIX		     1
-#define SSDB_OPT_READ_TIMEOUT    2
-#define SSDB_OPT_SERIALIZER      3
-#define SSDB_OPT_GEO_ZSCAN_LIMIT 4
+#define SSDB_OPT_PREFIX		  1
+#define SSDB_OPT_READ_TIMEOUT 2
+#define SSDB_OPT_SERIALIZER   3
 
 PHP_METHOD(SSDB, __construct);
 PHP_METHOD(SSDB, connect);

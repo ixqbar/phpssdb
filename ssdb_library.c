@@ -68,9 +68,6 @@ SSDBSock* ssdb_create_sock(
     ssdb_sock->err = NULL;
     ssdb_sock->err_len = 0;
 
-    //default limit set 2000
-    ssdb_sock->geo_zscan_limit = 2000;
-
     return ssdb_sock;
 }
 
