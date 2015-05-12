@@ -45,7 +45,6 @@ PHP_RSHUTDOWN_FUNCTION(ssdb);
 PHP_MINFO_FUNCTION(ssdb);
 
 PHP_FUNCTION(ssdb_version);
-PHP_FUNCTION(ssdb_geo_distance);
 
 /* 
   	Declare any global variables you may need between the BEGIN

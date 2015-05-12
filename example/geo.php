@@ -3,7 +3,6 @@
 ini_set('memory_limit', -1);
 
 $ssdb_handle = new SSDB('127.0.0.1', 8888);
-$ssdb_handle->option(SSDB::OPT_GEO_ZSCAN_LIMIT, 1000);
 
 //临沂四村
 $result = $ssdb_handle->geo_set('geo_test', 'a', 31.197452, 121.515095);
@@ -18,6 +17,13 @@ $result = $ssdb_handle->geo_set('geo_test', 'b', 31.196456, 121.515778);
 echo $result . PHP_EOL;
 
 $result = $ssdb_handle->geo_get('geo_test', 'b');
+print_r($result);
+
+//临沂五村
+$result = $ssdb_handle->geo_set('geo_test', 'bb', 31.196456, 121.515778);
+echo $result . PHP_EOL;
+
+$result = $ssdb_handle->geo_get('geo_test', 'bb');
 print_r($result);
 
 //临沂六村
@@ -45,7 +51,7 @@ print_r($result);
 $result = $ssdb_handle->geo_set('geo_test', 'f', 31.211745, 121.485553);
 echo $result . PHP_EOL;
 
-$result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000);
+$result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000, 10);
 print_r($result);
 
 $result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000, 4);
@@ -53,5 +59,3 @@ print_r($result);
 
 $result = $ssdb_handle->geo_distance('geo_test', 'b', 'e');
 echo $result . PHP_EOL;
-
-echo ssdb_geo_distance(31.196456, 121.515778, 31.203159, 121.518082) . PHP_EOL;

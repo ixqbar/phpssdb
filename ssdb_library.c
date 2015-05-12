@@ -68,9 +68,6 @@ SSDBSock* ssdb_create_sock(
     ssdb_sock->err = NULL;
     ssdb_sock->err_len = 0;
 
-    //default limit set 2000
-    ssdb_sock->geo_zscan_limit = 2000;
-
     return ssdb_sock;
 }
 
@@ -633,7 +630,7 @@ int resend_auth(SSDBSock *ssdb_sock) {
 		return -1;
 	}
 
-    if (strncmp(ssdb_response->block->data, "ok", 2)) {
+    if (0 != strcmp(ssdb_response->block->data, "ok")) {
     	ssdb_response_free(ssdb_response);
         return -1;
     }

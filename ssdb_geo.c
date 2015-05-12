@@ -366,7 +366,8 @@ bool ssdb_geo_neighbours(
 		char *member_key,
 		int member_key_len,
 		double radius_meters,
-		long limit,
+		long return_limit,
+		long zscan_limit,
 		INTERNAL_FUNCTION_PARAMETERS) {
 	double latlong[2] = {0};
 	if (!ssdb_geo_member(ssdb_sock, key, key_len, member_key, member_key_len, (double *)latlong)) {
@@ -381,7 +382,7 @@ bool ssdb_geo_neighbours(
 	ssdb_geo_obj->member_key     = member_key;
 	ssdb_geo_obj->member_key_len = member_key_len;
 	ssdb_geo_obj->limit_str      = NULL;
-	ssdb_geo_obj->limit_str_len  = spprintf(&ssdb_geo_obj->limit_str, 0, "%ld", ssdb_sock->geo_zscan_limit);
+	ssdb_geo_obj->limit_str_len  = spprintf(&ssdb_geo_obj->limit_str, 0, "%ld", zscan_limit);
 
 	GeoHashRadius georadius = geohashGetAreasByRadiusWGS84(latlong[0], latlong[1], radius_meters);
 	SSDBGeoList *l = ssdb_geo_members(ssdb_geo_obj, georadius, latlong[0], latlong[1], radius_meters);
@@ -392,7 +393,7 @@ bool ssdb_geo_neighbours(
 		return false;
 	}
 
-	limit = limit <= 0 ? l->num : limit;
+	return_limit = return_limit <= 0 ? l->num : return_limit;
 
 	int i = 0;
 	SSDBGeoPoint *p_l = malloc(sizeof(SSDBGeoPoint) * l->num);
@@ -415,7 +416,7 @@ bool ssdb_geo_neighbours(
 	zval *temp;
 	array_init(return_value);
 	for (i = 0; i < l->num; i++) {
-		if (i < limit) {
+		if (i < return_limit) {
 			MAKE_STD_ZVAL(temp);
 			array_init_size(temp, 3);
 			add_assoc_double_ex(temp, ZEND_STRS("latitude"),  p_l[i].latitude);
