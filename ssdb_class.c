@@ -3558,7 +3558,9 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, qtrim_front, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, qtrim_back,  NULL, ZEND_ACC_PUBLIC)
 	//alias
-	PHP_MALIAS(SSDB, setx, set, NULL, ZEND_ACC_PUBLIC)
+	PHP_MALIAS(SSDB, setx,      set,    NULL, ZEND_ACC_PUBLIC)
+	PHP_MALIAS(SSDB, geo_del,   zdel,   NULL, ZEND_ACC_PUBLIC)
+	PHP_MALIAS(SSDB, geo_clear, zclear, NULL, ZEND_ACC_PUBLIC)
 	//socket
 	PHP_ME(SSDB, read,  NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, write, NULL, ZEND_ACC_PUBLIC)

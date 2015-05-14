@@ -4,6 +4,12 @@ ini_set('memory_limit', -1);
 
 $ssdb_handle = new SSDB('127.0.0.1', 8888);
 
+$result = $ssdb_handle->geo_clear('geo_test');
+var_dump($result);
+
+$result = $ssdb_handle->geo_del('geo_test', 'a');
+var_dump($result);
+
 //临沂四村
 $result = $ssdb_handle->geo_set('geo_test', 'a', 31.197452, 121.515095);
 echo $result . PHP_EOL;
