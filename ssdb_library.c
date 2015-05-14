@@ -769,7 +769,7 @@ void ssdb_bool_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock) {
 
 	//qset只返回2\nok\n\n
 	if (ssdb_response->num > 0
-			&& 0 != strcmp(ssdb_response->block->data, "1")) {
+			&& 0 == strcmp(ssdb_response->block->data, "0")) {
 		RETVAL_FALSE;
 	} else {
 		RETVAL_TRUE;
