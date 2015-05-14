@@ -2212,7 +2212,7 @@ PHP_METHOD(SSDB, zclear) {
 
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
 
-	ssdb_bool_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
+	ssdb_long_number_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
 }
 
 PHP_METHOD(SSDB, zcount) {
