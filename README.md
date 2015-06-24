@@ -1,4 +1,10 @@
 
+for php7
+```
+todo
+```
+
+
 ###wiki
 [wiki](https://github.com/jonnywang/phpssdb/wiki)
 
