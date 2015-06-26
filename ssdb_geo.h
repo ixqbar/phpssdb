@@ -35,19 +35,19 @@ typedef struct {
 typedef struct {
 	SSDBSock *ssdb_sock;
 	char *key;
-	int key_len;
+	size_t key_len;
 	char *member_key;
-	int member_key_len;
+	size_t member_key_len;
 	char *limit_str;
-	int limit_str_len;
+	size_t limit_str_len;
 } SSDBGeoObj;
 
 bool ssdb_geo_set(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		double latitude,
 		double longitude,
 		INTERNAL_FUNCTION_PARAMETERS);
@@ -55,17 +55,17 @@ bool ssdb_geo_set(
 bool ssdb_geo_get(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		INTERNAL_FUNCTION_PARAMETERS);
 
 bool ssdb_geo_neighbours(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		double radius_meters,
 		long return_limit,
 		long zscan_limit,
@@ -74,11 +74,11 @@ bool ssdb_geo_neighbours(
 bool ssdb_geo_distance(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_a_key,
-		int member_a_key_len,
+		size_t member_a_key_len,
 		char *member_b_key,
-		int member_b_key_len,
+		size_t member_b_key_len,
 		INTERNAL_FUNCTION_PARAMETERS);
 
 #endif /* EXT_SSDB_SSDB_GEO_H_ */

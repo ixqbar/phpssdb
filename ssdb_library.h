@@ -101,9 +101,9 @@ int ssdb_open_socket(SSDBSock *ssdb_sock, int force_connect);
 int ssdb_connect_socket(SSDBSock *ssdb_sock);
 int ssdb_disconnect_socket(SSDBSock *ssdb_sock);
 
-int ssdb_key_prefix(SSDBSock *ssdb_sock, char **key, int *key_len);
-int ssdb_cmd_format_by_str(SSDBSock *ssdb_sock, char **ret, void *params, ...);
-int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret,
+size_t ssdb_key_prefix(SSDBSock *ssdb_sock, char **key, size_t *key_len);
+size_t ssdb_cmd_format_by_str(SSDBSock *ssdb_sock, char **ret, void *params, ...);
+size_t ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock, char **ret,
 		char *cmd, int cmd_len,
 		char *key, int key_len,
 		zval *params,
@@ -122,8 +122,8 @@ int ssdb_sock_write(SSDBSock *ssdb_sock, char *cmd, size_t sz);
 
 int resend_auth(SSDBSock *ssdb_sock);
 
-int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, int *val_len);
-int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, int val_len, zval **return_value);
+int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, size_t *val_len);
+int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, size_t val_len, zval **return_value);
 
 void ssdb_long_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
 void ssdb_double_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);

@@ -19,8 +19,9 @@
 #include "php.h"
 #include "ext/standard/info.h"
 #include "ext/standard/php_var.h"
-#include "ext/standard/php_smart_str.h"
+#include "ext/standard/php_smart_string.h"
 #include "Zend/zend_exceptions.h"
+#include "zend_smart_str.h"
 
 #include "ssdb_library.h"
 #include "ssdb_class.h"
@@ -41,39 +42,31 @@ PHP_SSDB_API zend_class_entry *ssdb_get_exception_base(int root TSRMLS_DC) {
 #if HAVE_SPL
     if (!root) {
         if (!spl_ce_RuntimeException) {
-            zend_class_entry **pce;
-            if (zend_hash_find(CG(class_table), "runtimeexception", sizeof("RuntimeException"), (void **) &pce) == SUCCESS) {
-                spl_ce_RuntimeException = *pce;
-                return *pce;
+            zend_class_entry *pce;
+            if ((pce = zend_hash_str_find_ptr(CG(class_table), "runtimeexception", sizeof("runtimeexception") - 1)) != NULL) {
+                spl_ce_RuntimeException = pce;
+                return pce;
             }
         } else {
             return spl_ce_RuntimeException;
         }
     }
 #endif
-#if (PHP_MAJOR_VERSION == 5) && (PHP_MINOR_VERSION < 2)
     return zend_exception_get_default();
-#else
-    return zend_exception_get_default(TSRMLS_C);
-#endif
 }
 
 //获取连接或重新连接
-PHP_SSDB_API int ssdb_sock_get(zval *id, SSDBSock **ssdb_sock TSRMLS_DC, int no_throw) {
-    zval **socket;
-    int resource_type;
-
-    if (Z_TYPE_P(id) != IS_OBJECT || zend_hash_find(Z_OBJPROP_P(id), "socket", sizeof("socket"), (void **) &socket) == FAILURE) {
+PHP_SSDB_API int ssdb_sock_get(zval *id, SSDBSock **ssdb_sock, int no_throw) {
+    zval *tmp;
+    if (Z_TYPE_P(id) != IS_OBJECT || (tmp = zend_hash_str_find(Z_OBJPROP_P(id), "socket", sizeof("socket")-1)) == NULL) {
         if (!no_throw) {
         	zend_throw_exception(ssdb_exception_ce, "SSDB server went away", 0 TSRMLS_CC);
         }
-
         return -1;
     }
 
-    *ssdb_sock = (SSDBSock *) zend_list_find(Z_LVAL_PP(socket), &resource_type);
-
-    if (!*ssdb_sock || resource_type != le_ssdb_sock) {
+    *ssdb_sock = (SSDBSock *)zend_fetch_resource_ex(tmp, "socket", le_ssdb_sock);
+    if (!*ssdb_sock) {
     	if (!no_throw) {
     		zend_throw_exception(ssdb_exception_ce, "SSDB server went away", 0 TSRMLS_CC);
     	}
@@ -87,17 +80,18 @@ PHP_SSDB_API int ssdb_sock_get(zval *id, SSDBSock **ssdb_sock TSRMLS_DC, int no_
         }
     }
 
-    return Z_LVAL_PP(socket);
+    return 0;
 }
 
 //连接
 PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
 	SSDBSock *ssdb_sock  = NULL;
 	zval *object;
-	zval **socket;
+	zval *socket;
+	zend_resource *res;
 
 	char *host = NULL, *persistent_id = NULL;
-	int host_len = 0, persistent_id_len = 0, id;
+	size_t host_len = 0, persistent_id_len = 0;
 	long port = 0, timeout = 0, retry_interval = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|llsl",
@@ -123,9 +117,9 @@ PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
 		timeout = 30.0;
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 1) > 0) {
-		if (zend_hash_find(Z_OBJPROP_P(object), "socket", sizeof("socket"), (void **)&socket) == SUCCESS) {
-			zend_list_delete(Z_LVAL_PP(socket));
+	if (0 == ssdb_sock_get(object, &ssdb_sock, 1)) {
+		if ((socket = zend_hash_str_find_ptr(Z_OBJPROP_P(object), "socket", sizeof("socket") - 1)) != NULL) {
+			zend_list_delete(Z_RES_P(socket));
 		}
 	}
 
@@ -135,12 +129,8 @@ PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
 		return FAILURE;
 	}
 
-#if PHP_VERSION_ID >= 50400
-	id = zend_list_insert(ssdb_sock, le_ssdb_sock TSRMLS_CC);
-#else
-	id = zend_list_insert(ssdb_sock, le_ssdb_sock);
-#endif
-	add_property_resource(object, "socket", id);
+	res = zend_register_resource(ssdb_sock, le_ssdb_sock);
+	add_property_resource(object, "socket", res);
 
 	return SUCCESS;
 }
@@ -162,7 +152,7 @@ PHP_METHOD(SSDB, option) {
 	zval *object;
 	long option, val_long;
 	char *val_str;
-	int val_len;
+	size_t val_len;
 	struct timeval read_tv;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ols",
@@ -172,7 +162,7 @@ PHP_METHOD(SSDB, option) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -181,6 +171,7 @@ PHP_METHOD(SSDB, option) {
 			if (ssdb_sock->prefix) {
 				efree(ssdb_sock->prefix);
 			}
+
 			if (val_len == 0) {
 				ssdb_sock->prefix = NULL;
 				ssdb_sock->prefix_len = 0;
@@ -228,7 +219,7 @@ PHP_METHOD(SSDB, connect) {
 }
 
 PHP_METHOD(SSDB, request) {
-	zval **z_args;
+	zval *z_args;
 	SSDBSock *ssdb_sock;
 	int argc = ZEND_NUM_ARGS(), i;
 	smart_str cmd = {0};
@@ -239,17 +230,17 @@ PHP_METHOD(SSDB, request) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(getThis(), &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(getThis(), &ssdb_sock, 0) < 0) {
 		efree(z_args);
 		RETURN_NULL();
 	}
 
 	smart_str buf = {0};
 	for (i = 0; i < argc; i++) {
-		convert_to_string(z_args[i]);
-		smart_str_append_long(&buf, Z_STRLEN_P(z_args[i]));
+		convert_to_string(&z_args[i]);
+		smart_str_append_long(&buf, Z_STRLEN(z_args[i]));
 		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
-		smart_str_appendl(&buf, Z_STRVAL_P(z_args[i]), Z_STRLEN_P(z_args[i]));
+		smart_str_appendl(&buf, Z_STRVAL(z_args[i]), Z_STRLEN(z_args[i]));
 		smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
 	}
 	smart_str_appendl(&buf, _NL, sizeof(_NL) - 1);
@@ -257,7 +248,7 @@ PHP_METHOD(SSDB, request) {
 
 	efree(z_args);
 
-	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, buf.c, buf.len);
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, buf.s->val, buf.s->len);
 
 	ssdb_list_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock, SSDB_FILTER_KEY_PREFIX, SSDB_UNSERIALIZE_NONE);
 }
@@ -266,7 +257,7 @@ PHP_METHOD(SSDB, auth) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *password = NULL, *cmd = NULL;
-	int password_len = 0, cmd_len = 0;
+	size_t password_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -275,7 +266,7 @@ PHP_METHOD(SSDB, auth) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -295,14 +286,14 @@ PHP_METHOD(SSDB, ping) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *cmd = NULL;
-	int cmd_len = 0;
+	size_t cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O",
 			&object, ssdb_ce) == FAILURE) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -327,7 +318,7 @@ PHP_METHOD(SSDB, version) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -344,14 +335,14 @@ PHP_METHOD(SSDB, dbsize) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *cmd = NULL;
-	int cmd_len = 0;
+	size_t cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O",
 			&object, ssdb_ce) == FAILURE) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -368,7 +359,7 @@ PHP_METHOD(SSDB, set) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
 	long expire = 0;
 
@@ -383,7 +374,7 @@ PHP_METHOD(SSDB, set) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -400,7 +391,7 @@ PHP_METHOD(SSDB, set) {
 	}
 
 	if (key_free) efree(key);
-	if (value_free) STR_FREE(value);
+	if (value_free) efree(value);
 	if (0 == cmd_len) RETURN_NULL();
 
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
@@ -412,7 +403,7 @@ PHP_METHOD(SSDB, getset) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
@@ -424,7 +415,7 @@ PHP_METHOD(SSDB, getset) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -434,7 +425,7 @@ PHP_METHOD(SSDB, getset) {
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("getset"), key, key_len, value, value_len, NULL);
 
 	if (key_free) efree(key);
-	if (value_free) STR_FREE(value);
+	if (value_free) efree(value);
 	if (0 == cmd_len) RETURN_NULL();
 
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
@@ -446,7 +437,7 @@ PHP_METHOD(SSDB, countbit) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0, num_args = ZEND_NUM_ARGS();
+	size_t key_len = 0, key_free = 0, cmd_len = 0, num_args = ZEND_NUM_ARGS();
 	long offset_index, offset_size;
 
 	if (zend_parse_method_parameters(num_args TSRMLS_CC, getThis(), "Os|ll",
@@ -458,7 +449,7 @@ PHP_METHOD(SSDB, countbit) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -496,7 +487,7 @@ PHP_METHOD(SSDB, substr) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0, num_args = ZEND_NUM_ARGS();
+	size_t key_len = 0, key_free = 0, cmd_len = 0, num_args = ZEND_NUM_ARGS();
 	long offset_index, offset_size;
 
 	if (zend_parse_method_parameters(num_args TSRMLS_CC, getThis(), "Os|ll",
@@ -508,7 +499,7 @@ PHP_METHOD(SSDB, substr) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -546,7 +537,7 @@ PHP_METHOD(SSDB, setbit) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long offset_index, offset_value;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -559,7 +550,7 @@ PHP_METHOD(SSDB, setbit) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -587,7 +578,7 @@ PHP_METHOD(SSDB, setnx) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
@@ -599,7 +590,7 @@ PHP_METHOD(SSDB, setnx) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -609,7 +600,7 @@ PHP_METHOD(SSDB, setnx) {
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("setnx"), key, key_len, value, value_len, NULL);
 
 	if (key_free) efree(key);
-	if (value_free) STR_FREE(value);
+	if (value_free) efree(value);
 	if (0 == cmd_len) RETURN_NULL();
 
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
@@ -621,7 +612,7 @@ PHP_METHOD(SSDB, del) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -630,7 +621,7 @@ PHP_METHOD(SSDB, del) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -649,7 +640,7 @@ PHP_METHOD(SSDB, exists) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -658,7 +649,7 @@ PHP_METHOD(SSDB, exists) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -677,7 +668,7 @@ PHP_METHOD(SSDB, get) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -686,7 +677,7 @@ PHP_METHOD(SSDB, get) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -705,7 +696,7 @@ PHP_METHOD(SSDB, strlen) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -714,7 +705,7 @@ PHP_METHOD(SSDB, strlen) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -733,7 +724,7 @@ PHP_METHOD(SSDB, getbit) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long offset = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -744,7 +735,7 @@ PHP_METHOD(SSDB, getbit) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -767,7 +758,7 @@ PHP_METHOD(SSDB, ttl) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -776,7 +767,7 @@ PHP_METHOD(SSDB, ttl) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -795,7 +786,7 @@ PHP_METHOD(SSDB, incr) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long incr_number = 1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -806,7 +797,7 @@ PHP_METHOD(SSDB, incr) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -829,7 +820,7 @@ PHP_METHOD(SSDB, expire) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long expire;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osl",
@@ -839,7 +830,7 @@ PHP_METHOD(SSDB, expire) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -863,7 +854,7 @@ PHP_METHOD(SSDB, keys) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -875,7 +866,7 @@ PHP_METHOD(SSDB, keys) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -906,7 +897,7 @@ PHP_METHOD(SSDB, scan) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -918,7 +909,7 @@ PHP_METHOD(SSDB, scan) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -949,7 +940,7 @@ PHP_METHOD(SSDB, rscan) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -961,7 +952,7 @@ PHP_METHOD(SSDB, rscan) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -992,7 +983,7 @@ PHP_METHOD(SSDB, multi_set) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *cmd = NULL;
-	int cmd_len = 0;
+	size_t cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oz",
 			&object, ssdb_ce,
@@ -1001,7 +992,7 @@ PHP_METHOD(SSDB, multi_set) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1018,7 +1009,7 @@ PHP_METHOD(SSDB, multi_get) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *cmd = NULL;
-	int cmd_len = 0;
+	size_t cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oz",
 			&object, ssdb_ce,
@@ -1027,7 +1018,7 @@ PHP_METHOD(SSDB, multi_get) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1053,7 +1044,7 @@ PHP_METHOD(SSDB, multi_del) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1070,21 +1061,19 @@ PHP_METHOD(SSDB, hset) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key = NULL, *key_value = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_len = 0, key_value_len = 0, key_value_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, key_len = 0, key_value_len = 0, key_value_free = 0, cmd_len = 0;
 	zval *z_value;
-
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossz",
 			&object, ssdb_ce,
 			&hash_key, &hash_key_len,
 			&key, &key_len,
 			&z_value) == FAILURE
 			|| 0 == hash_key_len
-			|| 0 == key_len
-			|| 0 == Z_STRLEN_P(z_value)) {
+			|| 0 == key_len) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1094,7 +1083,7 @@ PHP_METHOD(SSDB, hset) {
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hset"), hash_key, hash_key_len, key, key_len, key_value, key_value_len, NULL);
 
 	if (hash_key_free) efree(hash_key);
-	if (key_value_free) STR_FREE(key_value);
+	if (key_value_free) efree(key_value);
 	if (0 == cmd_len) RETURN_NULL();
 
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
@@ -1106,7 +1095,7 @@ PHP_METHOD(SSDB, hget) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -1117,7 +1106,7 @@ PHP_METHOD(SSDB, hget) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1136,7 +1125,7 @@ PHP_METHOD(SSDB, hdel) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -1147,7 +1136,7 @@ PHP_METHOD(SSDB, hdel) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1166,7 +1155,7 @@ PHP_METHOD(SSDB, hincr) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
 	long incr_number = 1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss|l",
@@ -1179,7 +1168,7 @@ PHP_METHOD(SSDB, hincr) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1202,7 +1191,7 @@ PHP_METHOD(SSDB, hexists) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -1213,7 +1202,7 @@ PHP_METHOD(SSDB, hexists) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1232,7 +1221,7 @@ PHP_METHOD(SSDB, hsize) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -1241,7 +1230,7 @@ PHP_METHOD(SSDB, hsize) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1260,7 +1249,7 @@ PHP_METHOD(SSDB, hlist) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -1272,12 +1261,12 @@ PHP_METHOD(SSDB, hlist) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1303,7 +1292,7 @@ PHP_METHOD(SSDB, hrlist) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -1315,12 +1304,12 @@ PHP_METHOD(SSDB, hrlist) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1346,8 +1335,9 @@ PHP_METHOD(SSDB, hkeys) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_start_len = 0, key_stop_len = 0, cmd_len = 0;
+	int hash_key_free = 0, cmd_len = 0;
 	long limit = 0;
+	size_t hash_key_len = 0,key_start_len = 0, key_stop_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osssl",
 			&object, ssdb_ce,
@@ -1360,7 +1350,7 @@ PHP_METHOD(SSDB, hkeys) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1383,7 +1373,7 @@ PHP_METHOD(SSDB, hgetall) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -1392,7 +1382,7 @@ PHP_METHOD(SSDB, hgetall) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1411,7 +1401,7 @@ PHP_METHOD(SSDB, hscan) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_start_len = 0, key_stop_len = 0, cmd_len = 0;
+	size_t hash_key_free = 0, cmd_len = 0, hash_key_len = 0, key_start_len = 0, key_stop_len = 0;
 	long limit = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osssl",
@@ -1425,12 +1415,12 @@ PHP_METHOD(SSDB, hscan) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hscan"), hash_key, hash_key_len, key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
@@ -1448,7 +1438,7 @@ PHP_METHOD(SSDB, hrscan) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, key_start_len = 0, key_stop_len = 0, cmd_len = 0;
+	size_t hash_key_free = 0, cmd_len = 0, hash_key_len = 0, key_start_len = 0, key_stop_len = 0;
 	long limit = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osssl",
@@ -1462,12 +1452,12 @@ PHP_METHOD(SSDB, hrscan) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	hash_key_free = ssdb_key_prefix(ssdb_sock, &hash_key, &hash_key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("hrscan"), hash_key, hash_key_len, key_start, key_start_len, key_stop, key_stop_len, limit_str, limit_str_len, NULL);
@@ -1485,7 +1475,7 @@ PHP_METHOD(SSDB, hclear) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -1494,7 +1484,7 @@ PHP_METHOD(SSDB, hclear) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1513,7 +1503,7 @@ PHP_METHOD(SSDB, multi_hset) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
 			&object, ssdb_ce,
@@ -1524,7 +1514,7 @@ PHP_METHOD(SSDB, multi_hset) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1543,7 +1533,7 @@ PHP_METHOD(SSDB, multi_hget) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
 			&object, ssdb_ce,
@@ -1554,7 +1544,7 @@ PHP_METHOD(SSDB, multi_hget) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1573,7 +1563,7 @@ PHP_METHOD(SSDB, multi_hdel) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *hash_key = NULL, *cmd = NULL;
-	int hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
+	size_t hash_key_len = 0, hash_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
 			&object, ssdb_ce,
@@ -1584,7 +1574,7 @@ PHP_METHOD(SSDB, multi_hdel) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1603,7 +1593,7 @@ PHP_METHOD(SSDB, zset) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 	long member_score;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -1616,12 +1606,12 @@ PHP_METHOD(SSDB, zset) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *member_score_str = NULL;
-	int member_score_str_len = spprintf(&member_score_str, 0, "%ld", member_score);
+	size_t member_score_str_len = spprintf(&member_score_str, 0, "%ld", member_score);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
@@ -1640,7 +1630,7 @@ PHP_METHOD(SSDB, zget) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -1651,7 +1641,7 @@ PHP_METHOD(SSDB, zget) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1671,7 +1661,7 @@ PHP_METHOD(SSDB, zdel) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -1682,7 +1672,7 @@ PHP_METHOD(SSDB, zdel) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1702,7 +1692,7 @@ PHP_METHOD(SSDB, zincr) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 	long member_score;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -1715,12 +1705,12 @@ PHP_METHOD(SSDB, zincr) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *member_score_str = NULL;
-	int member_score_str_len = spprintf(&member_score_str, 0, "%ld", member_score);
+	size_t member_score_str_len = spprintf(&member_score_str, 0, "%ld", member_score);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
@@ -1739,7 +1729,7 @@ PHP_METHOD(SSDB, zsize) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long member_score;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
@@ -1749,7 +1739,7 @@ PHP_METHOD(SSDB, zsize) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1769,7 +1759,7 @@ PHP_METHOD(SSDB, zlist) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -1781,12 +1771,12 @@ PHP_METHOD(SSDB, zlist) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1812,7 +1802,7 @@ PHP_METHOD(SSDB, zrlist) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -1824,12 +1814,12 @@ PHP_METHOD(SSDB, zrlist) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -1855,7 +1845,7 @@ PHP_METHOD(SSDB, zexists) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -1866,7 +1856,7 @@ PHP_METHOD(SSDB, zexists) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1886,7 +1876,7 @@ PHP_METHOD(SSDB, zkeys) {
 	zval *object, *score_start, *score_end;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *key_start = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, key_start_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, key_start_len = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osszzl",
@@ -1901,7 +1891,7 @@ PHP_METHOD(SSDB, zkeys) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1923,7 +1913,7 @@ PHP_METHOD(SSDB, zkeys) {
 	convert_to_string(score_end);
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zkeys"), key, key_len, key_start, key_start_len, Z_STRVAL_P(score_start), Z_STRLEN_P(score_start),  Z_STRVAL_P(score_end), Z_STRLEN_P(score_end), limit_str, limit_str_len, NULL);
@@ -1941,7 +1931,7 @@ PHP_METHOD(SSDB, zscan) {
 	zval *object, *score_start, *score_end;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *key_start = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, key_start_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, key_start_len = 0, cmd_len = 0;
 	long limit = -1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osszzl",
@@ -1955,7 +1945,7 @@ PHP_METHOD(SSDB, zscan) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -1977,7 +1967,7 @@ PHP_METHOD(SSDB, zscan) {
 	convert_to_string(score_end);
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zscan"), key, key_len, key_start, key_start_len, Z_STRVAL_P(score_start), Z_STRLEN_P(score_start), Z_STRVAL_P(score_end), Z_STRLEN_P(score_end), limit_str, limit_str_len, NULL);
@@ -1995,7 +1985,7 @@ PHP_METHOD(SSDB, zrscan) {
 	zval *object, *score_start, *score_end;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *key_start = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, key_start_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, key_start_len = 0, cmd_len = 0;
 	long limit = -1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osszzl",
@@ -2009,7 +1999,7 @@ PHP_METHOD(SSDB, zrscan) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2031,7 +2021,7 @@ PHP_METHOD(SSDB, zrscan) {
 	convert_to_string(score_end);
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zrscan"), key, key_len, key_start, key_start_len, Z_STRVAL_P(score_start), Z_STRLEN_P(score_start), Z_STRVAL_P(score_end), Z_STRLEN_P(score_end), limit_str, limit_str_len, NULL);
@@ -2049,7 +2039,7 @@ PHP_METHOD(SSDB, zrank) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -2060,7 +2050,7 @@ PHP_METHOD(SSDB, zrank) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2080,7 +2070,7 @@ PHP_METHOD(SSDB, zrrank) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -2091,7 +2081,7 @@ PHP_METHOD(SSDB, zrrank) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2111,7 +2101,7 @@ PHP_METHOD(SSDB, zrange) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long start_offset, limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2124,12 +2114,12 @@ PHP_METHOD(SSDB, zrange) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *start_offset_str = NULL;
-	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
+	size_t start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *limit_str = NULL;
 	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
@@ -2151,7 +2141,7 @@ PHP_METHOD(SSDB, zrrange) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long start_offset, limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2164,12 +2154,12 @@ PHP_METHOD(SSDB, zrrange) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *start_offset_str = NULL;
-	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
+	size_t start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *limit_str = NULL;
 	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
@@ -2191,7 +2181,7 @@ PHP_METHOD(SSDB, zclear) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -2200,7 +2190,7 @@ PHP_METHOD(SSDB, zclear) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2219,7 +2209,7 @@ PHP_METHOD(SSDB, zcount) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long score_start, score_end;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2231,15 +2221,15 @@ PHP_METHOD(SSDB, zcount) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *score_start_str = NULL;
-	int score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
+	size_t score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
 
 	char *score_end_str = NULL;
-	int score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
+	size_t score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zcount"), key, key_len, score_start_str, score_start_str_len, score_end_str, score_end_str_len, NULL);
@@ -2258,7 +2248,7 @@ PHP_METHOD(SSDB, zsum) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long score_start, score_end;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2270,15 +2260,15 @@ PHP_METHOD(SSDB, zsum) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *score_start_str = NULL;
-	int score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
+	size_t score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
 
 	char *score_end_str = NULL;
-	int score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
+	size_t score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zsum"), key, key_len, score_start_str, score_start_str_len, score_end_str, score_end_str_len, NULL);
@@ -2297,7 +2287,7 @@ PHP_METHOD(SSDB, zavg) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long score_start, score_end;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2309,17 +2299,18 @@ PHP_METHOD(SSDB, zavg) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *score_start_str = NULL;
-	int score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
+	size_t score_start_str_len = spprintf(&score_start_str, 0, "%ld", score_start);
 
 	char *score_end_str = NULL;
-	int score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
+	size_t score_end_str_len = spprintf(&score_end_str, 0, "%ld", score_end);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
+
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zavg"), key, key_len, score_start_str, score_start_str_len, score_end_str, score_end_str_len, NULL);
 
 	efree(score_start_str);
@@ -2336,7 +2327,7 @@ PHP_METHOD(SSDB, zremrangebyrank) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long start_offset, end_offset;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2348,15 +2339,15 @@ PHP_METHOD(SSDB, zremrangebyrank) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *start_offset_str = NULL;
-	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
+	size_t start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *end_offset_str = NULL;
-	int end_offset_str_len = spprintf(&end_offset_str, 0, "%ld", end_offset);
+	size_t end_offset_str_len = spprintf(&end_offset_str, 0, "%ld", end_offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zremrangebyrank"), key, key_len, start_offset_str, start_offset_str_len, end_offset_str, end_offset_str_len, NULL);
@@ -2375,7 +2366,7 @@ PHP_METHOD(SSDB, zremrangebyscore) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long start_score, end_score;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2387,15 +2378,15 @@ PHP_METHOD(SSDB, zremrangebyscore) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *start_score_str = NULL;
-	int start_score_str_len = spprintf(&start_score_str, 0, "%ld", start_score);
+	size_t start_score_str_len = spprintf(&start_score_str, 0, "%ld", start_score);
 
 	char *end_score_str = NULL;
-	int end_score_str_len= spprintf(&end_score_str, 0, "%ld", end_score);
+	size_t end_score_str_len= spprintf(&end_score_str, 0, "%ld", end_score);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zremrangebyscore"), key, key_len, start_score_str, start_score_str_len, end_score_str, end_score_str_len, NULL);
@@ -2414,7 +2405,7 @@ PHP_METHOD(SSDB, multi_zset) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *set_key = NULL, *cmd = NULL;
-	int set_key_len = 0, set_key_free = 0, cmd_len = 0;
+	size_t set_key_len = 0, set_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
 			&object, ssdb_ce,
@@ -2425,7 +2416,7 @@ PHP_METHOD(SSDB, multi_zset) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2444,7 +2435,7 @@ PHP_METHOD(SSDB, multi_zget) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *set_key = NULL, *cmd = NULL;
-	int set_key_len = 0, set_key_free = 0, cmd_len = 0;
+	size_t set_key_len = 0, set_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
 			&object, ssdb_ce,
@@ -2455,7 +2446,7 @@ PHP_METHOD(SSDB, multi_zget) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2474,7 +2465,7 @@ PHP_METHOD(SSDB, multi_zdel) {
 	zval *object, *z_args;
 	SSDBSock *ssdb_sock;
 	char *set_key = NULL, *cmd = NULL;
-	int set_key_len = 0, set_key_free = 0, cmd_len = 0;
+	size_t set_key_len = 0, set_key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
 			&object, ssdb_ce,
@@ -2485,7 +2476,7 @@ PHP_METHOD(SSDB, multi_zdel) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2504,7 +2495,7 @@ PHP_METHOD(SSDB, zpop_front) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -2516,14 +2507,14 @@ PHP_METHOD(SSDB, zpop_front) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	int size_str_len = spprintf(&size_str, 0, "%ld", size);
+	size_t size_str_len = spprintf(&size_str, 0, "%ld", size);
 
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zpop_front"), key, key_len, size_str, size_str_len, NULL);
 
@@ -2540,7 +2531,7 @@ PHP_METHOD(SSDB, zpop_back) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -2552,14 +2543,14 @@ PHP_METHOD(SSDB, zpop_back) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	int size_str_len = spprintf(&size_str, 0, "%ld", size);
+	size_t size_str_len = spprintf(&size_str, 0, "%ld", size);
 
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zpop_back"), key, key_len, size_str, size_str_len, NULL);
 
@@ -2576,7 +2567,7 @@ PHP_METHOD(SSDB, qsize) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -2585,7 +2576,7 @@ PHP_METHOD(SSDB, qsize) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2604,7 +2595,7 @@ PHP_METHOD(SSDB, qlist) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -2616,12 +2607,12 @@ PHP_METHOD(SSDB, qlist) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -2647,7 +2638,7 @@ PHP_METHOD(SSDB, qrlist) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key_start = NULL, *key_stop = NULL, *cmd = NULL;
-	int key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
+	size_t key_start_len = 0, key_start_free = 0, key_stop_len = 0, key_stop_free = 0, cmd_len = 0;
 	long limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossl",
@@ -2659,12 +2650,12 @@ PHP_METHOD(SSDB, qrlist) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	if (key_start_len) {
 		key_start_free = ssdb_key_prefix(ssdb_sock, &key_start, &key_start_len);
@@ -2690,7 +2681,7 @@ PHP_METHOD(SSDB, qclear) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -2699,7 +2690,7 @@ PHP_METHOD(SSDB, qclear) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2718,7 +2709,7 @@ PHP_METHOD(SSDB, qfront) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -2727,7 +2718,7 @@ PHP_METHOD(SSDB, qfront) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2746,7 +2737,7 @@ PHP_METHOD(SSDB, qback) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -2755,7 +2746,7 @@ PHP_METHOD(SSDB, qback) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2774,7 +2765,7 @@ PHP_METHOD(SSDB, qget) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long offset = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -2785,12 +2776,12 @@ PHP_METHOD(SSDB, qget) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *offset_str = NULL;
-	int offset_str_len = spprintf(&offset_str, 0, "%ld", offset);
+	size_t offset_str_len = spprintf(&offset_str, 0, "%ld", offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qget"), key, key_len, offset_str, offset_str_len, NULL);
@@ -2808,7 +2799,7 @@ PHP_METHOD(SSDB, qset) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	long offset_index;
 	zval *z_value;
 
@@ -2821,12 +2812,12 @@ PHP_METHOD(SSDB, qset) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *offset_index_str = NULL;
-	int offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
+	size_t offset_index_str_len = spprintf(&offset_index_str, 0, "%ld", offset_index);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
@@ -2847,7 +2838,7 @@ PHP_METHOD(SSDB, qrange) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long start_offset, limit;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2860,15 +2851,15 @@ PHP_METHOD(SSDB, qrange) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *start_offset_str = NULL;
-	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
+	size_t start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *limit_str = NULL;
-	int limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
+	size_t limit_str_len = spprintf(&limit_str, 0, "%ld", limit);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qrange"), key, key_len, start_offset_str, start_offset_str_len, limit_str, limit_str_len, NULL);
@@ -2887,7 +2878,7 @@ PHP_METHOD(SSDB, qslice) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long start_offset, end_offset;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osll",
@@ -2899,15 +2890,15 @@ PHP_METHOD(SSDB, qslice) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	char *start_offset_str = NULL;
-	int start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
+	size_t start_offset_str_len = spprintf(&start_offset_str, 0, "%ld", start_offset);
 
 	char *end_offset_str = NULL;
-	int end_offset_str_len = spprintf(&end_offset_str, 0, "%ld", end_offset);
+	size_t end_offset_str_len = spprintf(&end_offset_str, 0, "%ld", end_offset);
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qslice"), key, key_len, start_offset_str, start_offset_str_len, end_offset_str, end_offset_str_len, NULL);
@@ -2926,7 +2917,7 @@ PHP_METHOD(SSDB, qpush) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
@@ -2937,7 +2928,7 @@ PHP_METHOD(SSDB, qpush) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -2959,7 +2950,7 @@ PHP_METHOD(SSDB, qpush) {
 	if (IS_ARRAY != Z_TYPE_P(z_value)) {
 		value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpush"), key, key_len, value, value_len, NULL);
-		if (value_free) STR_FREE(value);
+		if (value_free) efree(value);
 	}  else {
 		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("qpush"), key, key_len, z_value, 0, 0, 1);
 	}
@@ -2976,7 +2967,7 @@ PHP_METHOD(SSDB, qpush_front) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
@@ -2987,7 +2978,7 @@ PHP_METHOD(SSDB, qpush_front) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3009,7 +3000,7 @@ PHP_METHOD(SSDB, qpush_front) {
 	if (IS_ARRAY != Z_TYPE_P(z_value)) {
 		value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpush_front"), key, key_len, value, value_len, NULL);
-		if (value_free) STR_FREE(value);
+		if (value_free) efree(value);
 	}  else {
 		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("qpush_front"), key, key_len, z_value, 0, 0, 1);
 	}
@@ -3026,7 +3017,7 @@ PHP_METHOD(SSDB, qpush_back) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *value = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, value_len = 0, value_free = 0, cmd_len = 0;
 	zval *z_value;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osz",
@@ -3037,7 +3028,7 @@ PHP_METHOD(SSDB, qpush_back) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3059,7 +3050,7 @@ PHP_METHOD(SSDB, qpush_back) {
 	if (IS_ARRAY != Z_TYPE_P(z_value)) {
 		value_free = ssdb_serialize(ssdb_sock, z_value, &value, &value_len);
 		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpush_back"), key, key_len, value, value_len, NULL);
-		if (value_free) STR_FREE(value);
+		if (value_free) efree(value);
 	}  else {
 		cmd_len = ssdb_cmd_format_by_zval(ssdb_sock, &cmd, ZEND_STRL("qpush_back"), key, key_len, z_value, 0, 0, 1);
 	}
@@ -3076,7 +3067,7 @@ PHP_METHOD(SSDB, qpop) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -3088,7 +3079,7 @@ PHP_METHOD(SSDB, qpop) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3121,7 +3112,7 @@ PHP_METHOD(SSDB, qpop_front) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -3133,7 +3124,7 @@ PHP_METHOD(SSDB, qpop_front) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3141,7 +3132,7 @@ PHP_METHOD(SSDB, qpop_front) {
 
 	if (size) {
 		char *size_str = NULL;
-		int size_str_len = spprintf(&size_str, 0, "%ld", size);
+		size_t size_str_len = spprintf(&size_str, 0, "%ld", size);
 
 		cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qpop_front"), key, key_len, size_str, size_str_len, NULL);
 
@@ -3166,7 +3157,7 @@ PHP_METHOD(SSDB, qpop_back) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -3178,7 +3169,7 @@ PHP_METHOD(SSDB, qpop_back) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3211,7 +3202,7 @@ PHP_METHOD(SSDB, qtrim_front) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -3223,14 +3214,14 @@ PHP_METHOD(SSDB, qtrim_front) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	int size_str_len = spprintf(&size_str, 0, "%ld", size);
+	size_t size_str_len = spprintf(&size_str, 0, "%ld", size);
 
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qtrim_front"), key, key_len, size_str, size_str_len, NULL);
 
@@ -3247,7 +3238,7 @@ PHP_METHOD(SSDB, qtrim_back) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *cmd = NULL;
-	int key_len = 0, key_free = 0, cmd_len = 0;
+	size_t key_len = 0, key_free = 0, cmd_len = 0;
 	long size = 1;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os|l",
@@ -3259,14 +3250,14 @@ PHP_METHOD(SSDB, qtrim_back) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 
 	char *size_str = NULL;
-	int size_str_len = spprintf(&size_str, 0, "%ld", size);
+	size_t size_str_len = spprintf(&size_str, 0, "%ld", size);
 
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("qtrim_back"), key, key_len, size_str, size_str_len, NULL);
 
@@ -3283,7 +3274,7 @@ PHP_METHOD(SSDB, read) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	long buf_len;
-	int read_buf_len = 0, once_read_buf_len = 0;
+	size_t read_buf_len = 0, once_read_buf_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ol",
 			&object, ssdb_ce,
@@ -3292,7 +3283,7 @@ PHP_METHOD(SSDB, read) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0
 			|| -1 == ssdb_check_eof(ssdb_sock)) {
 		RETURN_NULL();
 	}
@@ -3320,7 +3311,7 @@ PHP_METHOD(SSDB, read) {
 
 	buf[read_buf_len] = '\0';
 
-	RETVAL_STRINGL(buf, read_buf_len, 1);
+	RETVAL_STRINGL(buf, read_buf_len);
 	efree(buf);
 }
 
@@ -3328,7 +3319,7 @@ PHP_METHOD(SSDB, write) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *buf = NULL;
-	int buf_len = 0;
+	size_t buf_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Os",
 			&object, ssdb_ce,
@@ -3337,7 +3328,7 @@ PHP_METHOD(SSDB, write) {
 		RETURN_FALSE;
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_FALSE;
 	}
 
@@ -3352,7 +3343,7 @@ PHP_METHOD(SSDB, geo_set) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL;
-	int key_len = 0, key_free = 0, member_key_len = 0;
+	size_t key_len = 0, key_free = 0, member_key_len = 0;
 	double latitude, longitude;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossdd",
@@ -3366,7 +3357,7 @@ PHP_METHOD(SSDB, geo_set) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3379,7 +3370,7 @@ PHP_METHOD(SSDB, geo_get) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL;
-	int key_len = 0, member_key_len = 0;
+	size_t key_len = 0, member_key_len = 0;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
 			&object, ssdb_ce,
@@ -3390,7 +3381,7 @@ PHP_METHOD(SSDB, geo_get) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3403,7 +3394,7 @@ PHP_METHOD(SSDB, geo_neighbour) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_key = NULL;
-	int key_len = 0, member_key_len = 0;
+	size_t key_len = 0, member_key_len = 0;
 	double radius_meters = 1000;
 	long return_limit = 0, zscan_limit = 2000;
 
@@ -3420,7 +3411,7 @@ PHP_METHOD(SSDB, geo_neighbour) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3433,7 +3424,7 @@ PHP_METHOD(SSDB, geo_distance) {
 	zval *object;
 	SSDBSock *ssdb_sock;
 	char *key = NULL, *member_a_key = NULL, *member_b_key = NULL;
-	int key_len = 0, member_a_key_len = 0, member_b_key_len = 0;
+	size_t key_len = 0, member_a_key_len = 0, member_b_key_len = 0;
 	double radius_meters = 1000;
 
 	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osss",
@@ -3447,7 +3438,7 @@ PHP_METHOD(SSDB, geo_distance) {
 		RETURN_NULL();
 	}
 
-	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+	if (ssdb_sock_get(object, &ssdb_sock, 0) < 0) {
 		RETURN_NULL();
 	}
 
@@ -3456,7 +3447,7 @@ PHP_METHOD(SSDB, geo_distance) {
 	}
 }
 
-static void ssdb_destructor_socket(zend_rsrc_list_entry * rsrc TSRMLS_DC) {
+static void ssdb_destructor_socket(zend_resource * rsrc) {
 	SSDBSock *ssdb_sock = (SSDBSock *) rsrc->ptr;
 	ssdb_disconnect_socket(ssdb_sock);
     ssdb_free_socket(ssdb_sock);
@@ -3582,9 +3573,7 @@ void register_ssdb_class(int module_number TSRMLS_DC) {
 	INIT_CLASS_ENTRY(ece, "SSDBException", NULL);
 	ssdb_exception_ce = zend_register_internal_class_ex(
 		&ece,
-		ssdb_get_exception_base(0 TSRMLS_CC),
-		NULL TSRMLS_CC
-	);
+		ssdb_get_exception_base(0 TSRMLS_CC));
 
 	zend_declare_property_null(ssdb_exception_ce, ZEND_STRL("message"), ZEND_ACC_PROTECTED TSRMLS_CC);
 	zend_declare_property_long(ssdb_exception_ce, ZEND_STRL("code"), 0,	ZEND_ACC_PROTECTED TSRMLS_CC);

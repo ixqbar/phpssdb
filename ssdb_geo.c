@@ -264,12 +264,12 @@ static SSDBGeoList *ssdb_geo_members(SSDBGeoObj *ssdb_geo_obj, GeoHashRadius n, 
 static bool ssdb_geo_member(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		double *latlong) {
 	char *cmd = NULL;
-	int cmd_len = 0, key_free = 0;
+	size_t cmd_len = 0, key_free = 0;
 
 	key_free = ssdb_key_prefix(ssdb_sock, &key, &key_len);
 	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("zget"), key, key_len, member_key, member_key_len, NULL);
@@ -302,9 +302,9 @@ static bool ssdb_geo_member(
 bool ssdb_geo_set(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		double latitude,
 		double longitude,
 		INTERNAL_FUNCTION_PARAMETERS) {
@@ -344,9 +344,9 @@ bool ssdb_geo_set(
 bool ssdb_geo_get(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		INTERNAL_FUNCTION_PARAMETERS) {
 	double latlong[2] = {0};
 	if (!ssdb_geo_member(ssdb_sock, key, key_len, member_key, member_key_len, (double *)latlong)) {
@@ -362,9 +362,9 @@ bool ssdb_geo_get(
 
 bool ssdb_geo_neighbours(
 		SSDBSock *ssdb_sock, char *key,
-		int key_len,
+		size_t key_len,
 		char *member_key,
-		int member_key_len,
+		size_t member_key_len,
 		double radius_meters,
 		long return_limit,
 		long zscan_limit,
@@ -413,16 +413,15 @@ bool ssdb_geo_neighbours(
 
 	qsort(p_l, l->num, sizeof(SSDBGeoPoint), ssdb_geo_point_sort_asc);
 
-	zval *temp;
+	zval temp;
 	array_init(return_value);
 	for (i = 0; i < l->num; i++) {
 		if (i < return_limit) {
-			MAKE_STD_ZVAL(temp);
-			array_init_size(temp, 3);
-			add_assoc_double_ex(temp, ZEND_STRS("latitude"),  p_l[i].latitude);
-			add_assoc_double_ex(temp, ZEND_STRS("longitude"), p_l[i].longitude);
-			add_assoc_double_ex(temp, ZEND_STRS("distance"),  p_l[i].dist);
-			add_assoc_zval(return_value, p_l[i].member, temp);
+			array_init_size(&temp, 3);
+			add_assoc_double_ex(&temp, ZEND_STRS("latitude"),  p_l[i].latitude);
+			add_assoc_double_ex(&temp, ZEND_STRS("longitude"), p_l[i].longitude);
+			add_assoc_double_ex(&temp, ZEND_STRS("distance"),  p_l[i].dist);
+			add_assoc_zval(return_value, p_l[i].member, &temp);
 		}
 		efree(p_l[i].member);
 	}
@@ -436,11 +435,11 @@ bool ssdb_geo_neighbours(
 bool ssdb_geo_distance(
 		SSDBSock *ssdb_sock,
 		char *key,
-		int key_len,
+		size_t key_len,
 		char *member_a_key,
-		int member_a_key_len,
+		size_t member_a_key_len,
 		char *member_b_key,
-		int member_b_key_len,
+		size_t member_b_key_len,
 		INTERNAL_FUNCTION_PARAMETERS) {
 	double a_latlong[2] = {0};
 	if (!ssdb_geo_member(ssdb_sock, key, key_len, member_a_key, member_a_key_len, (double *)a_latlong)) {
