@@ -192,6 +192,8 @@ static SSDBGeoList *ssdb_geo_member_box(SSDBGeoObj *ssdb_geo_obj, GeoHashBits ha
 
 static SSDBGeoList *ssdb_geo_members(SSDBGeoObj *ssdb_geo_obj, GeoHashRadius n, double latitude, double longitude, double radius_meters) {
 	GeoHashBits neighbors[9];
+	SSDBGeoList *l = NULL;
+	int i;
 
 	neighbors[0] = n.hash;
 	neighbors[1] = n.neighbors.north;
@@ -203,8 +205,7 @@ static SSDBGeoList *ssdb_geo_members(SSDBGeoObj *ssdb_geo_obj, GeoHashRadius n, 
 	neighbors[7] = n.neighbors.south_east;
 	neighbors[8] = n.neighbors.south_west;
 
-	SSDBGeoList *l = NULL;
-	for (int i = 0; i < sizeof(neighbors) / sizeof(*neighbors); i++) {
+	for (i = 0; i < sizeof(neighbors) / sizeof(*neighbors); i++) {
 		if (HASHISZERO(neighbors[i])) {
 			continue;
 		}
