@@ -297,9 +297,8 @@ int ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock,
 		zend_hash_get_current_data(hash, (void**)&z_value_pp);
 		if (read_all) {
 			int type = zend_hash_get_current_key_ex(hash, &key, &key_len, &idx, 0, NULL);
-
 			if (type != HASH_KEY_IS_STRING) {
-				key_len = snprintf(key_str, 0, "%ld", (long)idx);
+				key_len = spprintf(&key_str, 0, "%lu", idx);
 				key = (char*)key_str;
 			} else if(key_len > 0) {
 				key_len--;
