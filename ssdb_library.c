@@ -307,7 +307,7 @@ size_t ssdb_cmd_format_by_zval(SSDBSock *ssdb_sock,
 				key_len = str_key->len;
 				key = str_key->val;
 			} else {
-				key_len = snprintf(key_str, 0, "%ld", num_key);
+				key_len = spprintf(&key_str, 0, "%lu", num_key);
 				key = (char*)key_str;
 			}
 
