@@ -9,6 +9,7 @@
    * [install](#install)
    * [usage] (#usage)
    * [connect](#connect)
+   * [close](#close)
    * [option](#option)
    * [auth](#auth)
    * [ping](#ping)
@@ -140,6 +141,16 @@ $ssdb_handle->get('ssdb_version');
 bool
 ```
 $ssdb_handle->connect("127.0.0.1", 8888);
+```
+
+#close
+#####params#####
+*void
+
+#####return#####
+bool
+```
+$ssdb_handle->close();
 ```
 
 #option
