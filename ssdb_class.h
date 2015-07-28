@@ -124,6 +124,8 @@ PHP_METHOD(SSDB, geo_set);
 PHP_METHOD(SSDB, geo_get);
 PHP_METHOD(SSDB, geo_neighbour);
 PHP_METHOD(SSDB, geo_distance);
+//close
+PHP_METHOD(SSDB, close);
 
 void register_ssdb_class(int module_number TSRMLS_DC);
 
