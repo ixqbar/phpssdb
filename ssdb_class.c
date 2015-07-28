@@ -135,6 +135,24 @@ PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
 	return SUCCESS;
 }
 
+PHP_SSDB_API int ssdb_sock_disconnect(SSDBSock *ssdb_sock TSRMLS_DC) {
+    if (ssdb_sock == NULL) {
+	    return 1;
+    }
+
+    if (ssdb_sock->stream != NULL) {
+		ssdb_sock->status = SSDB_SOCK_STATUS_DISCONNECTED;
+		if(ssdb_sock->stream && !ssdb_sock->persistent) {
+			php_stream_close(ssdb_sock->stream);
+		}
+		ssdb_sock->stream = NULL;
+
+		return 1;
+    }
+
+    return 0;
+}
+
 //构造函数
 PHP_METHOD(SSDB, __construct) {
 	int num_args = ZEND_NUM_ARGS();
@@ -3447,6 +3465,25 @@ PHP_METHOD(SSDB, geo_distance) {
 	}
 }
 
+PHP_METHOD(SSDB, close) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O", &object, ssdb_ce) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+    if (ssdb_sock_disconnect(ssdb_sock TSRMLS_CC)) {
+        RETURN_TRUE;
+    }
+
+    RETURN_FALSE;
+}
+
 static void ssdb_destructor_socket(zend_resource * rsrc) {
 	SSDBSock *ssdb_sock = (SSDBSock *) rsrc->ptr;
 	ssdb_disconnect_socket(ssdb_sock);
@@ -3458,6 +3495,7 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
 	PHP_ME(SSDB, option,      NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, connect,     NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, close,       NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, auth,        NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, ping,        NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, version,     NULL, ZEND_ACC_PUBLIC)
