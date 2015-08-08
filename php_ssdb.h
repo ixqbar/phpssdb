@@ -24,7 +24,7 @@
 extern zend_module_entry ssdb_module_entry;
 #define phpext_ssdb_ptr &ssdb_module_entry
 
-#define PHP_SSDB_VERSION "0.4.0"
+#define PHP_SSDB_VERSION "0.5.0"
 
 #ifdef PHP_WIN32
 #	define PHP_SSDB_API __declspec(dllexport)

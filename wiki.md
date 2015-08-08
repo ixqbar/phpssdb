@@ -8,7 +8,7 @@
 1. [common]
    * [install](#install)
    * [usage] (#usage)
-   * [connect](#connect)
+   * [connect/pconnect](#connect)
    * [close](#close)
    * [option](#option)
    * [auth](#auth)
@@ -104,21 +104,21 @@
 	* [qpop_back](#qpop_back)
 	* [qtrim_front](#qtrim_front)
 	* [qtrim_back](#qtrim_back)
-	
+
 	-----
 
 #install
 ```
 phpize
-./configure [--with-php-config=YOUR_PHP_CONFIG_PATH] [--enable-ssdb-igbinary] 
+./configure [--with-php-config=YOUR_PHP_CONFIG_PATH] [--enable-ssdb-igbinary]
 make
 make install
 ```
 
 #usage
 ```
-$ssdb_handle = new SSDB(); 
-//可省略connect方法使用$ssdb_handle = new SSDB('127.0.0.1', 8888); 
+$ssdb_handle = new SSDB();
+//可省略connect方法使用$ssdb_handle = new SSDB('127.0.0.1', 8888);
 $ssdb_handle->connect('127.0.0.1', 8888);
 $ssdb_handle->set('ssdb_version', '1.8.0');
 $ssdb_handle->get('ssdb_version');
@@ -126,7 +126,7 @@ $ssdb_handle->get('ssdb_version');
 * 本扩展支持的所有命令如果返回为NULL，代表可能的错误为命令参数错误、连接中断、服务器返回失败、客户端发送失败等
 * 为兼容官方php代码实现的客户端，提供类别名SimpleSSDB 如 $ssdb_handle = new SimpleSSDB('127.0.0.1', 8888);
 
-#connect
+#connect pconnect
 #####params#####
 *host* string 主机
 
@@ -155,17 +155,17 @@ $ssdb_handle->close();
 
 #option
 #####params#####
-*option_name*   
+*option_name*
 * SSDB::OPT_PREFIX
-* SSDB::OPT_READ_TIMEOUT 
-* SSDB::OPT_SERIALIZER   
+* SSDB::OPT_READ_TIMEOUT
+* SSDB::OPT_SERIALIZER
 
 提供
-SSDB::SERIALIZER_NONE 
-SSDB::SERIALIZER_PHP 
+SSDB::SERIALIZER_NONE
+SSDB::SERIALIZER_PHP
 SSDB::SERIALIZER_IGBINARY(需要编译开启)三种模式，默认无
 
-*option_value* 
+*option_value*
 #####return#####
 bool
 ```
@@ -548,8 +548,8 @@ array
 ```
 $ssdb_handle->zkeys('login', '', 0, 100, 100);
 ```
-* 列出zset中处于区间(member_start_name + member_start_score, member_end_score]的key列表. 
-* 如果member_start_name为空, 那么对应权重值大于或者等于 member_start_score的key将被返回. 
+* 列出zset中处于区间(member_start_name + member_start_score, member_end_score]的key列表.
+* 如果member_start_name为空, 那么对应权重值大于或者等于 member_start_score的key将被返回.
 * 如果member_start_name不为空, 那么对应权重值大于member_start_score的key, 或者大于member_start_score且对应权重值等于member_start_score的key将被返回.
 * 更多可以参考ssdb-server官网[http://ssdb.io/docs/zh_cn/php/index.html中zcan](http://ssdb.io/docs/zh_cn/php/index.html)的解释
 
@@ -994,7 +994,7 @@ string or NULL
 ```
 $ssdb_handle->qfront('queue');
 ```
-* 返回队列的第一个元素 
+* 返回队列的第一个元素
 
 #qback
 #####params#####

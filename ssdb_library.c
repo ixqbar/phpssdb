@@ -193,18 +193,18 @@ int ssdb_connect_socket(SSDBSock *ssdb_sock) {
 
 int ssdb_disconnect_socket(SSDBSock *ssdb_sock) {
     if (ssdb_sock == NULL) {
-	    return 1;
+	    return 0;
     }
 
     if (ssdb_sock->stream != NULL) {
     	ssdb_sock->status = SSDB_SOCK_STATUS_DISCONNECTED;
 		if (ssdb_sock->stream && !ssdb_sock->persistent) {
-			php_stream_close(ssdb_sock->stream);
+			ssdb_stream_close(ssdb_sock);
 		}
 		ssdb_sock->stream = NULL;
     }
 
-    return 0;
+    return 1;
 }
 
 int ssdb_key_prefix(SSDBSock *ssdb_sock, char **key, int *key_len) {

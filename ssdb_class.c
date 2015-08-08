@@ -145,24 +145,6 @@ PHP_SSDB_API int ssdb_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent) {
 	return SUCCESS;
 }
 
-PHP_SSDB_API int ssdb_sock_disconnect(SSDBSock *ssdb_sock TSRMLS_DC) {
-    if (ssdb_sock == NULL) {
-	    return 1;
-    }
-
-    if (ssdb_sock->stream != NULL) {
-		ssdb_sock->status = SSDB_SOCK_STATUS_DISCONNECTED;
-		if(ssdb_sock->stream && !ssdb_sock->persistent) {
-			php_stream_close(ssdb_sock->stream);
-		}
-		ssdb_sock->stream = NULL;
-
-		return 1;
-    }
-
-    return 0;
-}
-
 //构造函数
 PHP_METHOD(SSDB, __construct) {
 	int num_args = ZEND_NUM_ARGS();
@@ -236,11 +218,24 @@ PHP_METHOD(SSDB, option) {
 	}
 }
 
-//连接
+
 PHP_METHOD(SSDB, connect) {
 	if (ssdb_connect(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0) == FAILURE) {
 		RETVAL_FALSE;
 	} else {
+		RETVAL_TRUE;
+	}
+}
+
+PHP_METHOD(SSDB, pconnect) {
+	if (ssdb_connect(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1) == FAILURE) {
+		RETVAL_FALSE;
+	} else {
+		SSDBSock *ssdb_sock;
+		if (ssdb_sock_get(getThis(), &ssdb_sock TSRMLS_CC, 0) < 0) {
+			RETVAL_FALSE;
+		}
+
 		RETVAL_TRUE;
 	}
 }
@@ -3486,7 +3481,7 @@ PHP_METHOD(SSDB, close) {
 		RETURN_NULL();
 	}
 
-    if (ssdb_sock_disconnect(ssdb_sock TSRMLS_CC)) {
+    if (ssdb_disconnect_socket(ssdb_sock)) {
         RETURN_TRUE;
     }
 
@@ -3495,7 +3490,7 @@ PHP_METHOD(SSDB, close) {
 
 static void ssdb_destructor_socket(zend_rsrc_list_entry * rsrc TSRMLS_DC) {
 	SSDBSock *ssdb_sock = (SSDBSock *) rsrc->ptr;
-	ssdb_disconnect_socket(ssdb_sock);
+	ssdb_disconnect_socket(ssdb_sock TSRMLS_CC);
     ssdb_free_socket(ssdb_sock);
 }
 
@@ -3503,6 +3498,7 @@ static void ssdb_destructor_socket(zend_rsrc_list_entry * rsrc TSRMLS_DC) {
 const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
 	PHP_ME(SSDB, option,      NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, pconnect,    NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, connect,     NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, close,       NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, auth,        NULL, ZEND_ACC_PUBLIC)
