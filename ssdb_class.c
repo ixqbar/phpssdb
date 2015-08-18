@@ -391,7 +391,6 @@ PHP_METHOD(SSDB, set) {
 			&z_value,
 			&expire) == FAILURE
 			|| 0 == key_len
-			|| 0 == Z_STRLEN_P(z_value)
 			|| expire < 0) {
 		RETURN_NULL();
 	}
@@ -432,8 +431,7 @@ PHP_METHOD(SSDB, getset) {
 			&object, ssdb_ce,
 			&key, &key_len,
 			&z_value) == FAILURE
-			|| 0 == key_len
-			|| 0 == Z_STRLEN_P(z_value)) {
+			|| 0 == key_len) {
 		RETURN_NULL();
 	}
 
@@ -607,8 +605,7 @@ PHP_METHOD(SSDB, setnx) {
 			&object, ssdb_ce,
 			&key, &key_len,
 			&z_value) == FAILURE
-			|| 0 == key_len
-			|| 0 == Z_STRLEN_P(z_value)) {
+			|| 0 == key_len) {
 		RETURN_NULL();
 	}
 
@@ -1092,8 +1089,7 @@ PHP_METHOD(SSDB, hset) {
 			&key, &key_len,
 			&z_value) == FAILURE
 			|| 0 == hash_key_len
-			|| 0 == key_len
-			|| 0 == Z_STRLEN_P(z_value)) {
+			|| 0 == key_len) {
 		RETURN_NULL();
 	}
 
