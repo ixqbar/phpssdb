@@ -199,7 +199,7 @@ int ssdb_connect_socket(SSDBSock *ssdb_sock) {
 
 int ssdb_disconnect_socket(SSDBSock *ssdb_sock) {
     if (ssdb_sock == NULL) {
-	    return 1;
+	    return 0;
     }
 
     if (ssdb_sock->stream != NULL) {
@@ -210,7 +210,7 @@ int ssdb_disconnect_socket(SSDBSock *ssdb_sock) {
 		ssdb_sock->stream = NULL;
     }
 
-    return 0;
+    return 1;
 }
 
 size_t ssdb_key_prefix(SSDBSock *ssdb_sock, char **key, size_t *key_len) {

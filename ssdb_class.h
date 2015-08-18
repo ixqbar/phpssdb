@@ -24,6 +24,7 @@
 #define SSDB_OPT_SERIALIZER   3
 
 PHP_METHOD(SSDB, __construct);
+PHP_METHOD(SSDB, pconnect);
 PHP_METHOD(SSDB, connect);
 PHP_METHOD(SSDB, auth);
 PHP_METHOD(SSDB, ping);
