@@ -885,14 +885,14 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
     						add_assoc_long(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, atol(ssdb_response_block->data));
     						break;
     					case SSDB_CONVERT_TO_STRING:
-    						add_assoc_string(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, ssdb_response_block->data, 1);
+    						add_assoc_stringl(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, ssdb_response_block->data, ssdb_response_block->len, 1);
     						break;
     				}
     			} else {
     				if (ssdb_unserialize(ssdb_sock, ssdb_response_block->data, ssdb_response_block->len, &z)) {
     					add_assoc_zval(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, z);
     				} else {
-    					add_assoc_string(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, ssdb_response_block->data, 1);
+    					add_assoc_stringl(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, ssdb_response_block->data, ssdb_response_block->len, 1);
     				}
     			}
 			} else {
@@ -902,14 +902,14 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
 							add_assoc_long(return_value, ssdb_response_block->prev->data, atol(ssdb_response_block->data));
 							break;
 						case SSDB_CONVERT_TO_STRING:
-							add_assoc_string(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, 1);
+							add_assoc_stringl(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, ssdb_response_block->len, 1);
 							break;
 					}
 				} else {
 					if (ssdb_unserialize(ssdb_sock, ssdb_response_block->data, ssdb_response_block->len, &z)) {
 						add_assoc_zval(return_value, ssdb_response_block->prev->data, z);
 					} else {
-						add_assoc_string(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, 1);
+						add_assoc_stringl(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, ssdb_response_block->len, 1);
 					}
 				}
 			}
