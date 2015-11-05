@@ -80,6 +80,8 @@ PHP_SSDB_API int ssdb_sock_get(zval *id, SSDBSock **ssdb_sock TSRMLS_DC, int no_
 		return -1;
     }
 
+    (*ssdb_sock)->twin = 1;
+
     if ((*ssdb_sock)->lazy_connect) {
         (*ssdb_sock)->lazy_connect = 0;
         if (ssdb_open_socket(*ssdb_sock, 1) < 0) {
@@ -375,6 +377,33 @@ PHP_METHOD(SSDB, dbsize) {
 	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
 
 	ssdb_long_number_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock);
+}
+
+PHP_METHOD(SSDB, info) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *cmd = NULL;
+	int cmd_len = 0;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "O",
+			&object, ssdb_ce) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	cmd_len = ssdb_cmd_format_by_str(ssdb_sock, &cmd, ZEND_STRL("info"), NULL);
+
+	if (0 == cmd_len) RETURN_NULL();
+
+	SSDB_SOCKET_WRITE_COMMAND(ssdb_sock, cmd, cmd_len);
+
+	//fuck!!!
+	ssdb_sock->twin = 0;
+
+	ssdb_map_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, ssdb_sock, SSDB_FILTER_KEY_PREFIX_NONE, SSDB_UNSERIALIZE, SSDB_CONVERT_TO_STRING);
 }
 
 PHP_METHOD(SSDB, set) {
@@ -3501,6 +3530,7 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, ping,        NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, version,     NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, dbsize,      NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, info,        NULL, ZEND_ACC_PUBLIC)
 	//command
 	PHP_ME(SSDB, request,     NULL, ZEND_ACC_PUBLIC)
 	//string
@@ -3633,5 +3663,4 @@ void register_ssdb_class(int module_number TSRMLS_DC) {
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_PHP"),      SSDB_SERIALIZER_PHP TSRMLS_CC);
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_IGBINARY"), SSDB_SERIALIZER_IGBINARY TSRMLS_CC);
 
-	zend_register_class_alias_ex(ZEND_STRL("SimpleSSDB"), ssdb_ce TSRMLS_CC);
 }
