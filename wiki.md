@@ -8,8 +8,7 @@
 1. [common]
    * [install](#install)
    * [usage] (#usage)
-   * [connect/pconnect](#connect)
-   * [close](#close)
+   * [connect/pconnect](#connect-pconnect)
    * [option](#option)
    * [auth](#auth)
    * [ping](#ping)
@@ -17,6 +16,7 @@
    * [dbsize](#dbsize)
    * [request](#request)
    * [read/write](#read-write)
+   * [info] (#info)
 2. [string]
    * [set](#set)
    * [setx](#set)
@@ -86,39 +86,46 @@
    * [zpop_front](#zpop_front)
    * [zpop_back](#zpop_back)
 5. [list]  
-	* [qsize](#qsize)
-	* [qlist](#qlist-qrlist)
-	* [qrlist](#qlist-qrlist)
-	* [qclear](#qclear)
-	* [qfront](#qfront)
-	* [qback](#qback)
-	* [qget](#qget)
-	* [qset](#qset)
-	* [qrange](#qrange)
-	* [qslice](#qslice)
-	* [qpush](#qpush-qpush_back)
-	* [qpush_front](#qpush_front)
-	* [qpush_back](#qpush_back)
-	* [qpop](#qpop-qpop_back)
-	* [qpop_front](#qpop_front)
-	* [qpop_back](#qpop_back)
-	* [qtrim_front](#qtrim_front)
-	* [qtrim_back](#qtrim_back)
+   * [qsize](#qsize)
+   * [qlist](#qlist-qrlist)
+   * [qrlist](#qlist-qrlist)
+   * [qclear](#qclear)
+   * [qfront](#qfront)
+   * [qback](#qback)
+   * [qget](#qget)
+   * [qset](#qset)
+   * [qrange](#qrange)
+   * [qslice](#qslice)
+   * [qpush](#qpush-qpush_back)
+   * [qpush_front](#qpush_front)
+   * [qpush_back](#qpush_back)
+   * [qpop](#qpop-qpop_back)
+   * [qpop_front](#qpop_front)
+   * [qpop_back](#qpop_back)
+   * [qtrim_front](#qtrim_front)
+   * [qtrim_back](#qtrim_back)
+6. [geo]
+   * [geo_set](#geo_set)
+   * [geo_get](#geo_get)
+   * [geo_neighbour] (#geo_neighbour)
+   * [geo_del] (#geo_del)
+   * [geo_clear] (#geo_clear)
+   * [geo_distance] (#geo_distance)
 
-	-----
+    -----
 
 #install
 ```
 phpize
-./configure [--with-php-config=YOUR_PHP_CONFIG_PATH] [--enable-ssdb-igbinary]
+./configure [--with-php-config=YOUR_PHP_CONFIG_PATH] [--enable-ssdb-igbinary] 
 make
 make install
 ```
 
 #usage
 ```
-$ssdb_handle = new SSDB();
-//可省略connect方法使用$ssdb_handle = new SSDB('127.0.0.1', 8888);
+$ssdb_handle = new SSDB(); 
+//可省略connect方法使用$ssdb_handle = new SSDB('127.0.0.1', 8888); 
 $ssdb_handle->connect('127.0.0.1', 8888);
 $ssdb_handle->set('ssdb_version', '1.8.0');
 $ssdb_handle->get('ssdb_version');
@@ -143,29 +150,19 @@ bool
 $ssdb_handle->connect("127.0.0.1", 8888);
 ```
 
-#close
-#####params#####
-*void
-
-#####return#####
-bool
-```
-$ssdb_handle->close();
-```
-
 #option
 #####params#####
-*option_name*
+*option_name*   
 * SSDB::OPT_PREFIX
-* SSDB::OPT_READ_TIMEOUT
-* SSDB::OPT_SERIALIZER
+* SSDB::OPT_READ_TIMEOUT 
+* SSDB::OPT_SERIALIZER   
 
 提供
-SSDB::SERIALIZER_NONE
-SSDB::SERIALIZER_PHP
+SSDB::SERIALIZER_NONE 
+SSDB::SERIALIZER_PHP 
 SSDB::SERIALIZER_IGBINARY(需要编译开启)三种模式，默认无
 
-*option_value*
+*option_value* 
 #####return#####
 bool
 ```
@@ -242,6 +239,15 @@ var_dump($read_buf);
 ```
 $ssdb_handle->set('name', 'xingqiba');
 $ssdb_handle->set('blog', 'http://xingqiba.sinaapp.com/', 3600);
+```
+
+#info
+####params####
+void
+####return####
+array
+```
+$ssdb_handle->info();
 ```
 
 #get
@@ -548,8 +554,8 @@ array
 ```
 $ssdb_handle->zkeys('login', '', 0, 100, 100);
 ```
-* 列出zset中处于区间(member_start_name + member_start_score, member_end_score]的key列表.
-* 如果member_start_name为空, 那么对应权重值大于或者等于 member_start_score的key将被返回.
+* 列出zset中处于区间(member_start_name + member_start_score, member_end_score]的key列表. 
+* 如果member_start_name为空, 那么对应权重值大于或者等于 member_start_score的key将被返回. 
 * 如果member_start_name不为空, 那么对应权重值大于member_start_score的key, 或者大于member_start_score且对应权重值等于member_start_score的key将被返回.
 * 更多可以参考ssdb-server官网[http://ssdb.io/docs/zh_cn/php/index.html中zcan](http://ssdb.io/docs/zh_cn/php/index.html)的解释
 
@@ -796,7 +802,7 @@ $ssdb_handle->hexists('news', 'top'); //false
 #####return#####
 long
 ```
-$ssdb_handle->hexists('news');//1
+$ssdb_handle->hsize('news');//1
 ```
 
 #hlist hrlist
@@ -994,7 +1000,7 @@ string or NULL
 ```
 $ssdb_handle->qfront('queue');
 ```
-* 返回队列的第一个元素
+* 返回队列的第一个元素 
 
 #qback
 #####params#####
@@ -1052,8 +1058,88 @@ $ssdb_handle->qtrim_front('queue', 2);
 *size* 可选填 默认1
 #####return#####
 long
-```
+```php
 $ssdb_handle->qtrim_back('queue');
 $ssdb_handle->qtrim_back('queue', 2);
 ```
 * 从队列尾部删除多个元素
+
+# geo_set
+#####params#####
+*key*
+
+*member*
+
+*latitude*
+
+*longitude*
+#####return#####
+long
+```php
+$ssdb_handle->geo_set('geo_test', 'b', 31.196456, 121.515778);
+```
+
+# geo_get
+#####params#####
+*key*
+
+*member*
+#####return#####
+array
+```php
+$ssdb_handle->geo_get('geo_test', 'b');
+```
+
+# geo_neighbour
+#####params#####
+*key*
+
+*member*
+
+*radius_meters*
+
+*return_limit*
+default all
+
+*zscan_limit*
+default 2000
+#####return#####
+array
+```php
+$ssdb_handle->geo_neighbour('geo_test', 'b', 1000);
+$ssdb_handle->geo_neighbour('geo_test', 'b', 1000, 3);
+```
+
+# geo_del
+#####params#####
+*key*
+
+*member*
+#####return#####
+boolean
+```php
+$ssdb_handle->geo_del('geo_test', 'b');
+```
+
+# geo_clear
+#####params#####
+*key*
+
+#####return#####
+boolean
+```php
+$ssdb_handle->geo_del('geo_test');
+```
+
+# geo_distance
+#####params#####
+*key*
+
+*member*
+
+*member*
+#####return#####
+double
+```php
+$ssdb_handle->geo_distance('geo_test', 'a', 'b');
+```
