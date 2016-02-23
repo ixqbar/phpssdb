@@ -1,9 +1,4 @@
 
-for php7
-```
-Don't use it for your production env!
-```
-
 
 ###wiki
 [wiki](https://github.com/jonnywang/phpssdb/wiki)
