@@ -45,6 +45,7 @@ PHP_RSHUTDOWN_FUNCTION(ssdb);
 PHP_MINFO_FUNCTION(ssdb);
 
 PHP_FUNCTION(ssdb_version);
+PHP_FUNCTION(ssdb_wgs_hash);
 
 /* 
   	Declare any global variables you may need between the BEGIN

@@ -14,6 +14,8 @@ var_dump($result);
 $result = $ssdb_handle->geo_set('geo_test', 'a', 31.197452, 121.515095);
 echo $result . PHP_EOL;
 
+var_dump($result);
+var_dump(ssdb_wgs_hash(31.197452, 121.515095));
     
 $result = $ssdb_handle->geo_get('geo_test', 'a');
 print_r($result);
