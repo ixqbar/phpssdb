@@ -46,6 +46,10 @@ PHP_MINFO_FUNCTION(ssdb);
 
 PHP_FUNCTION(ssdb_version);
 PHP_FUNCTION(ssdb_wgs_hash);
+PHP_FUNCTION(ssdb_wgs2gcj);
+PHP_FUNCTION(ssdb_gcj2wgs);
+PHP_FUNCTION(ssdb_gcj2bd);
+PHP_FUNCTION(ssdb_wgs2bd);
 
 /* 
   	Declare any global variables you may need between the BEGIN

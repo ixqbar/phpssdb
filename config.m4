@@ -104,6 +104,7 @@ if test "$PHP_SSDB" != "no"; then
   PHP_NEW_EXTENSION(ssdb, ssdb_library.c \
                           ssdb_class.c \
                           ssdb_geo.c \
+                          ssdb_wgs.c \
                           geo/geohash.c \
                           geo/geohash_helper.c \
                           ssdb.c, $ext_shared)

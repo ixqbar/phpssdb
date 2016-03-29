@@ -32,6 +32,8 @@
 #include "geo/geohash.h"
 #include "geo/geohash_helper.h"
 
+#include "ssdb_wgs.h"
+
 /* If you declare any globals in php_ssdb.h uncomment this:
 ZEND_DECLARE_MODULE_GLOBALS(ssdb)
 */
@@ -43,6 +45,10 @@ ZEND_DECLARE_MODULE_GLOBALS(ssdb)
 const zend_function_entry ssdb_functions[] = {
 	PHP_FE(ssdb_version,  NULL)
 	PHP_FE(ssdb_wgs_hash, NULL)
+	PHP_FE(ssdb_wgs2gcj,  NULL)
+	PHP_FE(ssdb_gcj2wgs,  NULL)
+	PHP_FE(ssdb_wgs2bd,   NULL)
+	PHP_FE(ssdb_gcj2bd,   NULL)
 	PHP_FE_END	/* Must be the last line in ssdb_functions[] */
 };
 /* }}} */
@@ -175,6 +181,86 @@ PHP_FUNCTION(ssdb_wgs_hash)
 	}
 
 	RETVAL_LONG(geohashAlign52Bits(hash));
+}
+
+PHP_FUNCTION(ssdb_wgs2gcj)
+{
+	double latitude, longitude;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd", &latitude, &longitude) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	double gcjLat, gcjLng;
+	wgs2gcj(latitude, longitude, &gcjLat, &gcjLng);
+
+	array_init_size(return_value, 2);
+	add_next_index_double(return_value, gcjLat);
+	add_next_index_double(return_value, gcjLng);
+}
+
+PHP_FUNCTION(ssdb_gcj2wgs)
+{
+	double latitude, longitude;
+	zend_bool strict = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd|b", &latitude, &longitude, &strict) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	double wgsLat, wgsLng;
+	if (strict) {
+		gcj2wgs_exact(latitude, longitude, &wgsLat, &wgsLng);
+	} else {
+		gcj2wgs(latitude, longitude, &wgsLat, &wgsLng);
+	}
+
+	array_init_size(return_value, 2);
+	add_next_index_double(return_value, wgsLat);
+	add_next_index_double(return_value, wgsLng);
+}
+
+PHP_FUNCTION(ssdb_wgs2bd)
+{
+	double latitude, longitude;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd", &latitude, &longitude) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	double gcjLat, gcjLng;
+	wgs2gcj(latitude, longitude, &gcjLat, &gcjLng);
+
+	double tmp = 3.14159265358979324 * 3000.0 / 180.0;
+	double gcjZ = sqrt(gcjLng * gcjLng + gcjLat * gcjLat) + 0.00002 * sin(gcjLat * tmp);
+	double gcjT = atan2(gcjLat, gcjLng) + 0.000003 * cos(gcjLng * tmp);
+
+	gcjLat = gcjZ * sin(gcjT) + 0.006;
+	gcjLng = gcjZ * cos(gcjT) + 0.0065;
+
+	array_init_size(return_value, 2);
+	add_next_index_double(return_value, gcjLat);
+	add_next_index_double(return_value, gcjLng);
+}
+
+PHP_FUNCTION(ssdb_gcj2bd)
+{
+	double latitude, longitude;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "dd", &latitude, &longitude) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	double tmp = 3.14159265358979324 * 3000.0 / 180.0;
+	double gcjZ = sqrt(longitude * longitude + latitude * latitude) + 0.00002 * sin(latitude * tmp);
+	double gcjT = atan2(latitude, longitude) + 0.000003 * cos(longitude * tmp);
+
+	double gcjLat = gcjZ * sin(gcjT) + 0.006;
+	double gcjLng = gcjZ * cos(gcjT) + 0.0065;
+
+	array_init_size(return_value, 2);
+	add_next_index_double(return_value, gcjLat);
+	add_next_index_double(return_value, gcjLng);
 }
 
 /*
