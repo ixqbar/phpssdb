@@ -51,6 +51,7 @@ SSDBSock* ssdb_create_sock(
 	ssdb_sock->persistent = persistent;
 	ssdb_sock->lazy_connect = lazy_connect;
 	ssdb_sock->serializer = SSDB_SERIALIZER_NONE;
+	ssdb_sock->twin = 1;
 
 	if (persistent_id) {
 		size_t persistent_id_len = strlen(persistent_id);
@@ -845,16 +846,19 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
     SSDBResponse *ssdb_response = ssdb_sock_read(ssdb_sock);
     if (ssdb_response == NULL
     		|| ssdb_response->status != SSDB_IS_OK
-			|| ssdb_response->num % 2 != 0) {
+			|| (1 == ssdb_sock->twin && ssdb_response->num % 2 != 0)) {
     	ssdb_response_free(ssdb_response);
     	php_printf("error\n");
         RETURN_NULL();
     }
 
+    SSDBResponseBlock *ssdb_response_block = ssdb_response->block;
+	if (0 == ssdb_sock->twin) {
+		ssdb_response_block = ssdb_response_block->next;
+	}
 
     int i = 1;
     array_init(return_value);
-    SSDBResponseBlock *ssdb_response_block = ssdb_response->block;
     while (ssdb_response_block != NULL) {
     	if (0 == i % 2) {
     		zval *z = NULL;

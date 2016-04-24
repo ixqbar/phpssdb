@@ -31,6 +31,7 @@ PHP_METHOD(SSDB, ping);
 PHP_METHOD(SSDB, option);
 PHP_METHOD(SSDB, version);
 PHP_METHOD(SSDB, dbsize);
+PHP_METHOD(SSDB, info);
 //command
 PHP_METHOD(SSDB, request);
 //string

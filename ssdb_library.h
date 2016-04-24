@@ -66,6 +66,7 @@ typedef struct {
 	int persistent;
 	char *persistent_id;
 	int serializer;
+	int twin;//为支持info，可能ssdb-server某版本以后就移除了info的返回ssdb-server无用内容，fuck!!!
 } SSDBSock;
 
 typedef struct _SSDBResponseBlock {
