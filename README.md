@@ -1,6 +1,7 @@
 
 ###更新记录
 ```
+2016-05-20 修正#11(SSDB::SERIALIZER_PHP Segmentation fault)
 2016-03-29 增加ssdb_wgs2gcj ssdb_gcj2wgs ssdb_gcj2bd ssdb_wgs2bd
 2016-03-28 增加ssdb_wgs_hash
 ```
