@@ -124,7 +124,7 @@ int ssdb_sock_write(SSDBSock *ssdb_sock, char *cmd, size_t sz);
 int resend_auth(SSDBSock *ssdb_sock);
 
 int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, size_t *val_len);
-int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, size_t val_len, zval **return_value);
+int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, size_t val_len, zval *return_value);
 
 void ssdb_long_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);
 void ssdb_double_number_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock);

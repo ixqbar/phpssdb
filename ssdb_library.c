@@ -694,45 +694,28 @@ int ssdb_serialize(SSDBSock *ssdb_sock, zval *z, char **val, size_t *val_len) {
 	return 0;
 }
 
-int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, size_t val_len, zval **return_value) {
+int ssdb_unserialize(SSDBSock *ssdb_sock, const char *val, size_t val_len, zval *return_value) {
 	php_unserialize_data_t var_hash;
-	int ret, rv_free = 0;
+	int ret;
 
 	switch(ssdb_sock->serializer) {
 		case SSDB_SERIALIZER_NONE:
 			return 0;
 		case SSDB_SERIALIZER_PHP:
-			if (!*return_value) {
-				array_init(*return_value);
-				rv_free = 1;
-			}
-#if ZEND_MODULE_API_NO >= 20100000
 			PHP_VAR_UNSERIALIZE_INIT(var_hash);
-#else
-			memset(&var_hash, 0, sizeof(var_hash));
-#endif
-			if (!php_var_unserialize(*return_value, (const unsigned char**)&val, (const unsigned char*)val + val_len, &var_hash TSRMLS_CC)) {
-				if (rv_free==1) efree(*return_value);
+			if(!php_var_unserialize(return_value, (const unsigned char**)&val,
+					(const unsigned char*)val + val_len, &var_hash TSRMLS_CC)) {
 				ret = 0;
 			} else {
 				ret = 1;
 			}
-#if ZEND_MODULE_API_NO >= 20100000
 			PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
-#else
-			var_destroy(&var_hash);
-#endif
 			return ret;
 		case SSDB_SERIALIZER_IGBINARY:
 #ifdef HAVE_SSDB_IGBINARY
-			if (!*return_value) {
-				array_init(*return_value);
-				rv_free = 1;
-			}
-			if (igbinary_unserialize((const uint8_t *)val, (size_t)val_len, return_value TSRMLS_CC) == 0) {
+			if(igbinary_unserialize((const uint8_t *)val, (size_t)val_len, return_value TSRMLS_CC) == 0) {
 				return 1;
 			}
-			if(rv_free==1) efree(*return_value);
 #endif
 			return 0;
 			break;
@@ -768,7 +751,7 @@ void ssdb_string_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock) {
         RETURN_NULL();
     }
 
-    if (ssdb_unserialize(ssdb_sock, ssdb_response->block->data, ssdb_response->block->len, &return_value) == 0) {
+    if (ssdb_unserialize(ssdb_sock, ssdb_response->block->data, ssdb_response->block->len, return_value) == 0) {
     	RETVAL_STRINGL(ssdb_response->block->data, ssdb_response->block->len);
 	}
 
@@ -812,7 +795,7 @@ void ssdb_list_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int f
     array_init_size(return_value, ssdb_response->num);
     SSDBResponseBlock *ssdb_response_block = ssdb_response->block;
     while (ssdb_response_block != NULL) {
-    	zval *z = NULL;
+    	zval z;
     	if (filter_prefix == SSDB_FILTER_KEY_PREFIX
     			&& ssdb_sock->prefix
 				&& 0 == strncmp(ssdb_response_block->data, ssdb_sock->prefix, ssdb_sock->prefix_len)) {
@@ -820,7 +803,7 @@ void ssdb_list_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int f
     			add_next_index_string(return_value, ssdb_response_block->data + ssdb_sock->prefix_len);
     		} else {
     			if (ssdb_unserialize(ssdb_sock, ssdb_response_block->data + ssdb_sock->prefix_len, ssdb_response_block->len - ssdb_sock->prefix_len, &z)) {
-    				add_next_index_zval(return_value, z);
+    				add_next_index_zval(return_value, &z);
     			} else {
     				add_next_index_string(return_value, ssdb_response_block->data + ssdb_sock->prefix_len);
     			}
@@ -830,7 +813,7 @@ void ssdb_list_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int f
     			add_next_index_string(return_value, ssdb_response_block->data);
     		} else {
     			if (ssdb_unserialize(ssdb_sock, ssdb_response_block->data, ssdb_response_block->len, &z)) {
-    				add_next_index_zval(return_value, z);
+    				add_next_index_zval(return_value, &z);
     			} else {
     				add_next_index_string(return_value, ssdb_response_block->data);
     			}
@@ -842,7 +825,11 @@ void ssdb_list_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int f
     ssdb_response_free(ssdb_response);
 }
 
-void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int filter_prefix, int unserialize, int convert_type) {
+void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS,
+		SSDBSock *ssdb_sock,
+		int filter_prefix,
+		int unserialize,
+		int convert_type) {
     SSDBResponse *ssdb_response = ssdb_sock_read(ssdb_sock);
     if (ssdb_response == NULL
     		|| ssdb_response->status != SSDB_IS_OK
@@ -861,7 +848,7 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
     array_init(return_value);
     while (ssdb_response_block != NULL) {
     	if (0 == i % 2) {
-    		zval *z = NULL;
+    		zval z;
     		if (filter_prefix == SSDB_FILTER_KEY_PREFIX
 					&& ssdb_sock->prefix
 					&& 0 == strncmp(ssdb_response_block->prev->data, ssdb_sock->prefix, ssdb_sock->prefix_len)) {
@@ -876,7 +863,7 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
     				}
     			} else {
     				if (ssdb_unserialize(ssdb_sock, ssdb_response_block->data, ssdb_response_block->len, &z)) {
-    					add_assoc_zval(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, z);
+    					add_assoc_zval(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, &z);
     				} else {
     					add_assoc_stringl(return_value, ssdb_response_block->prev->data + ssdb_sock->prefix_len, ssdb_response_block->data, ssdb_response_block->len);
     				}
@@ -893,7 +880,7 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS, SSDBSock *ssdb_sock, int fi
 					}
 				} else {
 					if (ssdb_unserialize(ssdb_sock, ssdb_response_block->data, ssdb_response_block->len, &z)) {
-						add_assoc_zval(return_value, ssdb_response_block->prev->data, z);
+						add_assoc_zval(return_value, ssdb_response_block->prev->data, &z);
 					} else {
 						add_assoc_stringl(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, ssdb_response_block->len);
 					}
