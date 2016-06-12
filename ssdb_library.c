@@ -839,9 +839,11 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS,
         RETURN_NULL();
     }
 
+    zval tmp;
     SSDBResponseBlock *ssdb_response_block = ssdb_response->block;
 	if (0 == ssdb_sock->twin) {
 		ssdb_response_block = ssdb_response_block->next;
+		array_init(&tmp);
 	}
 
     int i = 1;
@@ -875,7 +877,15 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS,
 							add_assoc_long(return_value, ssdb_response_block->prev->data, atol(ssdb_response_block->data));
 							break;
 						case SSDB_CONVERT_TO_STRING:
-							add_assoc_stringl(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, ssdb_response_block->len);
+							if (1 == ssdb_sock->twin) {
+								add_assoc_stringl(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, ssdb_response_block->len);
+							} else {
+								if (0 == strncmp("replication", ssdb_response_block->prev->data, strlen(ssdb_response_block->prev->data))) {
+									add_next_index_stringl(&tmp, ssdb_response_block->data, ssdb_response_block->len);
+								} else {
+									add_assoc_stringl(return_value, ssdb_response_block->prev->data, ssdb_response_block->data, ssdb_response_block->len);
+								}
+							}
 							break;
 					}
 				} else {
@@ -889,6 +899,10 @@ void ssdb_map_response(INTERNAL_FUNCTION_PARAMETERS,
     	}
     	ssdb_response_block = ssdb_response_block->next;
     	i++;
+    }
+
+    if (0 == ssdb_sock->twin) {
+    	add_assoc_zval(return_value, "replication", &tmp);
     }
 
     ssdb_response_free(ssdb_response);
