@@ -125,6 +125,7 @@ PHP_METHOD(SSDB, write);
 PHP_METHOD(SSDB, geo_set);
 PHP_METHOD(SSDB, geo_get);
 PHP_METHOD(SSDB, geo_neighbour);
+PHP_METHOD(SSDB, geo_radius);
 PHP_METHOD(SSDB, geo_distance);
 //close
 PHP_METHOD(SSDB, close);

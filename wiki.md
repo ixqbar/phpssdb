@@ -1,15 +1,10 @@
-
-#More features
-[DEV](https://github.com/jonnywang/phpssdb/tree/dev)
-
 #目录
 
 -----
 1. [common]
    * [install](#install)
    * [usage] (#usage)
-   * [connect](#connect)
-   * [close](#close)
+   * [connect/pconnect](#connect-pconnect)
    * [option](#option)
    * [auth](#auth)
    * [ping](#ping)
@@ -17,6 +12,7 @@
    * [dbsize](#dbsize)
    * [request](#request)
    * [read/write](#read-write)
+   * [info] (#info)
 2. [string]
    * [set](#set)
    * [setx](#set)
@@ -86,26 +82,33 @@
    * [zpop_front](#zpop_front)
    * [zpop_back](#zpop_back)
 5. [list]  
-	* [qsize](#qsize)
-	* [qlist](#qlist-qrlist)
-	* [qrlist](#qlist-qrlist)
-	* [qclear](#qclear)
-	* [qfront](#qfront)
-	* [qback](#qback)
-	* [qget](#qget)
-	* [qset](#qset)
-	* [qrange](#qrange)
-	* [qslice](#qslice)
-	* [qpush](#qpush-qpush_back)
-	* [qpush_front](#qpush_front)
-	* [qpush_back](#qpush_back)
-	* [qpop](#qpop-qpop_back)
-	* [qpop_front](#qpop_front)
-	* [qpop_back](#qpop_back)
-	* [qtrim_front](#qtrim_front)
-	* [qtrim_back](#qtrim_back)
-	
-	-----
+   * [qsize](#qsize)
+   * [qlist](#qlist-qrlist)
+   * [qrlist](#qlist-qrlist)
+   * [qclear](#qclear)
+   * [qfront](#qfront)
+   * [qback](#qback)
+   * [qget](#qget)
+   * [qset](#qset)
+   * [qrange](#qrange)
+   * [qslice](#qslice)
+   * [qpush](#qpush-qpush_back)
+   * [qpush_front](#qpush_front)
+   * [qpush_back](#qpush_back)
+   * [qpop](#qpop-qpop_back)
+   * [qpop_front](#qpop_front)
+   * [qpop_back](#qpop_back)
+   * [qtrim_front](#qtrim_front)
+   * [qtrim_back](#qtrim_back)
+6. [geo]
+   * [geo_set](#geo_set)
+   * [geo_get](#geo_get)
+   * [geo_neighbour] (#geo_neighbour)
+   * [geo_del] (#geo_del)
+   * [geo_clear] (#geo_clear)
+   * [geo_distance] (#geo_distance)
+   * [geo_radius] (#geo_radius)
+    -----
 
 #install
 ```
@@ -125,7 +128,7 @@ $ssdb_handle->get('ssdb_version');
 ```
 * 本扩展支持的所有命令如果返回为NULL，代表可能的错误为命令参数错误、连接中断、服务器返回失败、客户端发送失败等
 
-#connect
+#connect pconnect
 #####params#####
 *host* string 主机
 
@@ -140,16 +143,6 @@ $ssdb_handle->get('ssdb_version');
 bool
 ```
 $ssdb_handle->connect("127.0.0.1", 8888);
-```
-
-#close
-#####params#####
-*void
-
-#####return#####
-bool
-```
-$ssdb_handle->close();
 ```
 
 #option
@@ -241,6 +234,15 @@ var_dump($read_buf);
 ```
 $ssdb_handle->set('name', 'xingqiba');
 $ssdb_handle->set('blog', 'http://xingqiba.sinaapp.com/', 3600);
+```
+
+#info
+####params####
+void
+####return####
+array
+```
+$ssdb_handle->info();
 ```
 
 #get
@@ -795,7 +797,7 @@ $ssdb_handle->hexists('news', 'top'); //false
 #####return#####
 long
 ```
-$ssdb_handle->hexists('news');//1
+$ssdb_handle->hsize('news');//1
 ```
 
 #hlist hrlist
@@ -1051,8 +1053,110 @@ $ssdb_handle->qtrim_front('queue', 2);
 *size* 可选填 默认1
 #####return#####
 long
-```
+```php
 $ssdb_handle->qtrim_back('queue');
 $ssdb_handle->qtrim_back('queue', 2);
 ```
 * 从队列尾部删除多个元素
+
+# geo_set
+#####params#####
+*key*
+
+*member*
+
+*latitude*
+
+*longitude*
+#####return#####
+long
+```php
+$ssdb_handle->geo_set('geo_test', 'b', 31.196456, 121.515778);
+```
+
+# geo_get
+#####params#####
+*key*
+
+*member*
+#####return#####
+array
+```php
+$ssdb_handle->geo_get('geo_test', 'b');
+```
+
+# geo_neighbour
+#####params#####
+*key*
+
+*member*
+
+*radius_meters*
+
+*return_limit*
+default all
+
+*zscan_limit*
+default 2000
+#####return#####
+array
+```php
+$ssdb_handle->geo_neighbour('geo_test', 'b', 1000);
+$ssdb_handle->geo_neighbour('geo_test', 'b', 1000, 3);
+```
+
+# geo_radius
+#####params#####
+*key*
+
+*latitude*
+
+*longitude*
+
+*radius_meters*
+
+*return_limit*
+default all
+
+*zscan_limit*
+default 2000
+#####return#####
+array
+```php
+$ssdb_handle->geo_radius('geo_test', 31.196456, 121.515778, 1000);
+$ssdb_handle->geo_radius('geo_test', 31.196456, 121.515778, 1000, 3);
+```
+
+# geo_del
+#####params#####
+*key*
+
+*member*
+#####return#####
+boolean
+```php
+$ssdb_handle->geo_del('geo_test', 'b');
+```
+
+# geo_clear
+#####params#####
+*key*
+
+#####return#####
+boolean
+```php
+$ssdb_handle->geo_del('geo_test');
+```
+
+# geo_distance
+#####params#####
+*key*
+
+*member*
+
+*member*
+#####return#####
+double
+```php
+$ssdb_handle->geo_distance('geo_test', 'a', 'b');
+```

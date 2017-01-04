@@ -366,13 +366,17 @@ bool ssdb_geo_neighbours(
 		size_t key_len,
 		char *member_key,
 		size_t member_key_len,
+		double latitude,
+		double longitude,
 		double radius_meters,
 		long return_limit,
 		long zscan_limit,
 		INTERNAL_FUNCTION_PARAMETERS) {
-	double latlong[2] = {0};
-	if (!ssdb_geo_member(ssdb_sock, key, key_len, member_key, member_key_len, (double *)latlong)) {
-		return false;
+	double latlong[2] = {latitude, longitude};
+	if (member_key_len > 0) {
+		if (!ssdb_geo_member(ssdb_sock, key, key_len, member_key, member_key_len, (double *)latlong)) {
+			return false;
+		}
 	}
 
 	SSDBGeoObj *ssdb_geo_obj = emalloc(sizeof(SSDBGeoObj));
