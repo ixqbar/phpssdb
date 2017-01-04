@@ -3462,7 +3462,38 @@ PHP_METHOD(SSDB, geo_neighbour) {
 		RETURN_NULL();
 	}
 
-	if (!ssdb_geo_neighbours(ssdb_sock, key, key_len, member_key, member_key_len, radius_meters, return_limit, zscan_limit, INTERNAL_FUNCTION_PARAM_PASSTHRU)) {
+	if (!ssdb_geo_neighbours(ssdb_sock, key, key_len, member_key, member_key_len, 0, 0, radius_meters, return_limit, zscan_limit, INTERNAL_FUNCTION_PARAM_PASSTHRU)) {
+		RETURN_NULL();
+	}
+}
+
+PHP_METHOD(SSDB, geo_radius) {
+	zval *object;
+	SSDBSock *ssdb_sock;
+	char *key = NULL;
+	int key_len = 0;
+	double radius_meters = 1000;
+	long return_limit = 0, zscan_limit = 2000;
+	double latitude, longitude;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Osdd|dl",
+			&object, ssdb_ce,
+			&key, &key_len,
+			&latitude,
+			&longitude,
+			&radius_meters,
+			&return_limit,
+			&zscan_limit) == FAILURE
+			|| 0 == key_len
+			|| radius_meters <= 0) {
+		RETURN_NULL();
+	}
+
+	if (ssdb_sock_get(object, &ssdb_sock TSRMLS_CC, 0) < 0) {
+		RETURN_NULL();
+	}
+
+	if (!ssdb_geo_neighbours(ssdb_sock, key, key_len, NULL, 0, latitude, longitude, radius_meters, return_limit, zscan_limit, INTERNAL_FUNCTION_PARAM_PASSTHRU)) {
 		RETURN_NULL();
 	}
 }
@@ -3628,6 +3659,7 @@ const zend_function_entry ssdb_class_methods[] = {
 	PHP_ME(SSDB, geo_set,  NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, geo_get,  NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, geo_neighbour, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(SSDB, geo_radius, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(SSDB, geo_distance, NULL, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };

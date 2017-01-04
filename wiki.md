@@ -111,7 +111,7 @@
    * [geo_del] (#geo_del)
    * [geo_clear] (#geo_clear)
    * [geo_distance] (#geo_distance)
-
+   * [geo_radius] (#geo_radius)
     -----
 
 #install
@@ -1107,6 +1107,28 @@ array
 ```php
 $ssdb_handle->geo_neighbour('geo_test', 'b', 1000);
 $ssdb_handle->geo_neighbour('geo_test', 'b', 1000, 3);
+```
+
+# geo_radius
+#####params#####
+*key*
+
+*latitude*
+
+*longitude*
+
+*radius_meters*
+
+*return_limit*
+default all
+
+*zscan_limit*
+default 2000
+#####return#####
+array
+```php
+$ssdb_handle->geo_radius('geo_test', 31.196456, 121.515778, 1000);
+$ssdb_handle->geo_radius('geo_test', 31.196456, 121.515778, 1000, 3);
 ```
 
 # geo_del

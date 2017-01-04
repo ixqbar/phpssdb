@@ -22,6 +22,7 @@ print_r($result);
 $result = $ssdb_handle->geo_set('geo_test', 'b', 31.196456, 121.515778);
 echo $result . PHP_EOL;
 
+echo "b GEO" . PHP_EOL;
 $result = $ssdb_handle->geo_get('geo_test', 'b');
 print_r($result);
 
@@ -61,6 +62,10 @@ $result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000, 10);
 print_r($result);
 
 $result = $ssdb_handle->geo_neighbour('geo_test', 'b', 4000, 4);
+print_r($result);
+
+echo "geo_radius" . PHP_EOL;
+$result = $ssdb_handle->geo_radius('geo_test', 31.196456, 121.515778, 4000, 5);
 print_r($result);
 
 $result = $ssdb_handle->geo_distance('geo_test', 'b', 'e');
