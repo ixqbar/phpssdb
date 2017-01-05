@@ -1,7 +1,3 @@
-
-#More features
-[DEV](https://github.com/jonnywang/phpssdb/tree/dev)
-
 #目录
 
 -----
