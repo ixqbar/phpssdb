@@ -3684,5 +3684,5 @@ void register_ssdb_class(int module_number TSRMLS_DC) {
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_PHP"),      SSDB_SERIALIZER_PHP TSRMLS_CC);
 	zend_declare_class_constant_long(ssdb_ce,    ZEND_STRL("SERIALIZER_IGBINARY"), SSDB_SERIALIZER_IGBINARY TSRMLS_CC);
 
-	zend_register_class_alias_ex(ZEND_STRL("SimpleSSDB"), ssdb_ce TSRMLS_CC);
+    zend_register_class_alias("SimpleSSDB", ssdb_ce TSRMLS_CC);
 }
